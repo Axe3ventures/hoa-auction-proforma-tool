@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { listPurchased, markPurchased, unmarkPurchased } from "../../../lib/purchasedStore";
 import { writePurchaseInfo, setRowColor } from "../../../lib/googleSheets";
 import { sheetNameFor } from "../../../lib/sheetConfig";
-import { isSelfPurchase } from "../../../lib/purchaseClassification";
+import { isSelfPurchase, addMonths } from "../../../lib/purchaseClassification";
 
 export async function GET() {
   return NextResponse.json({ purchased: listPurchased() });
@@ -11,7 +11,11 @@ export async function GET() {
 async function setPurchaseDetails(id, dealType, { price, purchaser }) {
   const sheetName = sheetNameFor(dealType);
   const purchasedDate = price ? new Date().toISOString().slice(0, 10) : "";
-  const wroteToSheet = await writePurchaseInfo(sheetName, id, { price, purchaser, purchasedDate }).catch((err) => {
+  // Written to the sheet purely for visibility (the app itself recomputes
+  // this independently in /api/properties) — a follow-up nudge only applies
+  // when someone else bought it, not on a self-purchase.
+  const followUpDate = price && !isSelfPurchase(purchaser) ? addMonths(purchasedDate, 9) : "";
+  const wroteToSheet = await writePurchaseInfo(sheetName, id, { price, purchaser, purchasedDate, followUpDate }).catch((err) => {
     console.error(`Failed to write purchase info to Google Sheets for ${dealType}/${id}:`, err.message);
     return false;
   });

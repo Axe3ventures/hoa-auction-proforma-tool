@@ -77,6 +77,11 @@ function resolveNotesFields(r) {
   }
   const addlLoanIdx = r.__header.findIndex((h) => HEADER_ALIASES.Addl_Loan_Date.includes(h));
   if (addlLoanIdx === -1) return {};
+  // Only apply the positional convention when the column right after Addl
+  // Loan genuinely has no header of its own — on a tab where it's followed by
+  // real labeled columns instead (e.g. this sheet's NTS tab: Marc, Auction
+  // Status, ...), guessing by position would grab the wrong data entirely.
+  if (r.__header[addlLoanIdx + 1]) return {};
   // On a raw (uncleaned) sheet there's just one column doing double duty as
   // both the numeric HUD amount and its free-text description.
   const hudRaw = r.__raw[addlLoanIdx + 1];
@@ -200,7 +205,10 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
         bed: r.Bed || "",
         bath: r.Bath || "",
         sqft: toNum(r.SqFt),
-        judgment: toNum(field(r, "Judgment")),
+        // NTS tabs commonly have no Judgment/Opening-Bid column at all — the
+        // opening bid at a trustee sale is typically the loan payoff anyway,
+        // so fall back to the mortgage balance rather than showing $0.
+        judgment: field(r, "Judgment") !== undefined ? toNum(field(r, "Judgment")) : mortgageBalance,
         mortgageBalance,
         hudAmount,
         mortgageModified,
