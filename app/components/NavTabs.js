@@ -7,6 +7,7 @@ const TABS = [
   { href: "/", label: "Sheriff Sales" },
   { href: "/nts", label: "NTS (Trustee Sale)" },
   { href: "/purchased", label: "Purchased" },
+  { href: "/purchased-other", label: "Purchased by Other" },
 ];
 
 export default function NavTabs() {

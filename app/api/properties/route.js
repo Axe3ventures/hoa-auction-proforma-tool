@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchSheetRows, fetchRowColors, fetchPurchaseInfo } from "../../../lib/googleSheets";
 import { listPurchased } from "../../../lib/purchasedStore";
 import { SHEET_RANGES, sheetNameFor } from "../../../lib/sheetConfig";
+import { classifySale, addMonths } from "../../../lib/purchaseClassification";
 import sheriffFallbackRows from "../../../data/auction-sample.json";
 
 // NTS (Notice of Trustee Sale / Trustee Sale) deals live on a separate "NTS" tab
@@ -143,7 +144,9 @@ function resolveMortgage(r, notes) {
 // Only show auctions within +/- 3 months of today — keeps the list focused on
 // deals that are actually actionable right now. Rows with an unparseable or
 // missing auction date are kept (fail-open) rather than silently hidden.
-// Purchased homes skip this filter entirely — they're kept indefinitely.
+// Purchased and Purchased-by-Other homes skip this filter entirely (see the
+// GET handler below, which never calls this for those two tabs) — they're
+// kept indefinitely regardless of how old or far-out their auction date is.
 function isWithinAuctionWindow(auctionDateStr) {
   if (!auctionDateStr) return true;
   const d = new Date(auctionDateStr);
@@ -173,16 +176,24 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
       const localEntry = localEntries?.find((e) => e.id === String(r.ID) && e.dealType === sourceType);
       const purchasePrice = toNum(sheetPurchase?.price) || toNum(localEntry?.price);
       const purchaser = sheetPurchase?.purchaser || localEntry?.purchaser || "";
+      const purchasedDate = sheetPurchase?.purchasedDate || localEntry?.purchasedAt || "";
+      // "self" (blank or "I Purchased" typed in) routes to the Purchased tab
+      // and highlights green; any other name typed into Purchased By means
+      // someone else won the deal — routes to Purchased by Other and
+      // highlights orange. Falls back to the manual row color when no price
+      // has been recorded yet.
+      const saleClass = classifySale(purchasePrice, purchaser, rowColor);
       return {
         id: String(r.ID),
         sourceType,
         rowColor,
-        // Purchased once a sale price has actually been recorded (columns
-        // AD/AE on the sheet, matched by row ID), or the row was manually
-        // highlighted green in the Sheet.
-        purchased: purchasePrice > 0 || rowColor === "green",
+        purchased: saleClass === "self",
+        purchasedByOther: saleClass === "other",
         purchasePrice,
         purchaser,
+        purchasedDate,
+        // Reminder to follow up on a deal someone else bought — 9 months out.
+        followUpDate: saleClass === "other" ? addMonths(purchasedDate, 9) : "",
         address: r.Address || "",
         city: r.City || "",
         zip: r.Zip || "",
@@ -241,14 +252,15 @@ const notEliminated = (p) => p.rowColor !== "red";
 export async function GET(request) {
   const type = new URL(request.url).searchParams.get("type") || "sheriff";
 
-  if (type === "purchased") {
+  if (type === "purchased" || type === "purchased-other") {
     const [sheriffData, ntsData] = await Promise.all([
       loadSourceProperties("sheriff"),
       loadSourceProperties("nts"),
     ]);
+    const matches = type === "purchased" ? (p) => p.purchased : (p) => p.purchasedByOther;
     const properties = [...sheriffData.properties, ...ntsData.properties]
       .filter(notEliminated)
-      .filter((p) => p.purchased);
+      .filter(matches);
     const source =
       sheriffData.source === "google-sheets" || ntsData.source === "google-sheets"
         ? "google-sheets"
@@ -260,6 +272,6 @@ export async function GET(request) {
   const { source, properties } = await loadSourceProperties(sourceKey);
   const visible = properties
     .filter(notEliminated)
-    .filter((p) => isWithinAuctionWindow(p.auctionDate) && !p.purchased);
+    .filter((p) => isWithinAuctionWindow(p.auctionDate) && !p.purchased && !p.purchasedByOther);
   return NextResponse.json({ source, properties: visible });
 }

@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { computeDeal, computeMaxBid } from "../../lib/proforma";
 import { DEAL_CONFIG } from "../../lib/dealConfig";
+import { isSelfPurchase } from "../../lib/purchaseClassification";
 import NavTabs from "./NavTabs";
+
+const fmtDate = (s) => (s ? new Date(s).toLocaleDateString("en-US") : "—");
+const isPurchasedTab = (dealType) => dealType === "purchased" || dealType === "purchased-other";
 
 const fmtUSD = (n) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -84,7 +88,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
   // NTS, each with their own goal/ROI conventions — look those up per property
   // instead of using one static config for the whole page.
   function configFor(p) {
-    if (dealType === "purchased" && p) {
+    if (isPurchasedTab(dealType) && p) {
       return DEAL_CONFIG[p.sourceType] || DEAL_CONFIG.sheriff;
     }
     return {
@@ -240,7 +244,9 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
             {filtered.length === 0 && source && (
               <div className="hint">
                 {dealType === "purchased"
-                  ? "No purchased homes yet — enter a sale price on a property's Base Figures panel (Sheriff Sales or NTS tab) and click I Purchased to move it here."
+                  ? "No purchased homes yet — enter a sale price on a property's Base Figures panel (Sheriff Sales or NTS tab), leave Purchased By blank (or type \"I Purchased\"), and click I Purchased to move it here."
+                  : dealType === "purchased-other"
+                  ? "No deals purchased by someone else yet — enter a sale price and a different buyer's name on a property's Base Figures panel (Sheriff Sales or NTS tab) to move it here."
                   : "No properties match."}
               </div>
             )}
@@ -252,7 +258,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
               >
                 <div className="addr">
                   {p.address || `Property ${p.id}`}
-                  {dealType === "purchased" && (
+                  {isPurchasedTab(dealType) && (
                     <span className="sourceBadge">{DEAL_CONFIG[p.sourceType]?.title || p.sourceType}</span>
                   )}
                 </div>
@@ -286,10 +292,14 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
                 </div>
               </div>
 
-              {dealType === "purchased" ? (
+              {isPurchasedTab(dealType) ? (
                 <div className="purchaseBox">
                   <div className="factRow"><span>Purchased By</span><span className="val">{selected.purchaser || "(you)"}</span></div>
                   <div className="factRow"><span>Purchase Price</span><span className="val">{fmtUSD(selected.purchasePrice)}</span></div>
+                  <div className="factRow"><span>Purchase Date</span><span className="val">{fmtDate(selected.purchasedDate)}</span></div>
+                  {dealType === "purchased-other" && (
+                    <div className="factRow"><span>Follow-Up Reminder</span><span className="val">{fmtDate(selected.followUpDate)}</span></div>
+                  )}
                   <button className="purchaseButton secondary" onClick={() => handleUnpurchase(selected)}>
                     Move Back / Undo Purchase
                   </button>
@@ -307,7 +317,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
                       />
                     </label>
                     <label className="purchaseField">
-                      Purchased By <span className="hint">(leave blank if it's you)</span>
+                      Purchased By <span className="hint">(leave blank or "I Purchased" if it's you — any other name moves it to Purchased by Other)</span>
                       <input
                         type="text"
                         placeholder="Name"
@@ -316,7 +326,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
                       />
                     </label>
                     <button className="purchaseButton" onClick={() => handleMarkPurchased(selected)}>
-                      I Purchased
+                      {isSelfPurchase(purchaseFormBuyer) ? "I Purchased" : "Mark Purchased by Other"}
                     </button>
                   </div>
                 </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { listPurchased, markPurchased, unmarkPurchased } from "../../../lib/purchasedStore";
 import { writePurchaseInfo, setRowColor } from "../../../lib/googleSheets";
 import { sheetNameFor } from "../../../lib/sheetConfig";
+import { isSelfPurchase } from "../../../lib/purchaseClassification";
 
 export async function GET() {
   return NextResponse.json({ purchased: listPurchased() });
@@ -9,16 +10,19 @@ export async function GET() {
 
 async function setPurchaseDetails(id, dealType, { price, purchaser }) {
   const sheetName = sheetNameFor(dealType);
-  const wroteToSheet = await writePurchaseInfo(sheetName, id, { price, purchaser }).catch((err) => {
+  const purchasedDate = price ? new Date().toISOString().slice(0, 10) : "";
+  const wroteToSheet = await writePurchaseInfo(sheetName, id, { price, purchaser, purchasedDate }).catch((err) => {
     console.error(`Failed to write purchase info to Google Sheets for ${dealType}/${id}:`, err.message);
     return false;
   });
 
   if (wroteToSheet) {
-    // Highlight the row green to match, or clear it back to white when
-    // un-purchasing — otherwise a leftover green highlight would make the row
-    // look purchased again the next time colors are read.
-    await setRowColor(sheetName, id, price ? "green" : "none").catch((err) => {
+    // Highlight the row green for a self-purchase, orange when someone else's
+    // name was entered as the buyer, or clear it back to white when
+    // un-purchasing — otherwise a leftover highlight would make the row look
+    // purchased again the next time colors are read.
+    const colorName = !price ? "none" : isSelfPurchase(purchaser) ? "green" : "orange";
+    await setRowColor(sheetName, id, colorName).catch((err) => {
       console.error(`Failed to set row color for ${dealType}/${id}:`, err.message);
     });
     // The sheet is now the source of truth — clear any stale local entry so
