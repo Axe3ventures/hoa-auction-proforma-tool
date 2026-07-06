@@ -7,7 +7,8 @@
   `HUD_Notes_Raw` (original text, for anything the parser guessed wrong). Column
   headers are also renamed to be unambiguous (`Judgment`, `Mortgage_Balance`, etc.),
   and a blank `Purchased` column has been added at the end for the checkbox below.
-- `webapp/` — the Next.js app, with three pages sharing the same layout:
+- The Next.js app (this folder — `app/`, `lib/`, `package.json`, etc. all live at
+  the repo root), with three pages sharing the same layout:
   - **Sheriff Sales** (`/`) — HOA-judgment foreclosure deals. Goal: sell within 240
     days; Max Bid is calculated to hit a 25% minimum ROI.
   - **NTS / Trustee Sale** (`/nts`) — mortgage/deed-of-trust foreclosure deals. Goal:
@@ -24,7 +25,6 @@
 ## Run it now (sample data)
 
 ```
-cd webapp
 npm install   # already done
 npm run dev
 ```
@@ -68,7 +68,6 @@ the Purchased checkbox needs to write back to the sheet).
 
 ### 5. Fill in your local environment file
 ```
-cd webapp
 cp .env.example .env.local
 ```
 Edit `.env.local`:
@@ -83,10 +82,10 @@ Edit `.env.local`:
 Restart `npm run dev`. The badge should switch to "Live: Google Sheets".
 
 Note: until the sheet is connected with Editor access and has a `Purchased`
-column, the checkbox falls back to writing a local file
-(`webapp/data/purchased.json`) instead. That file only works on the machine
-that wrote it — it will NOT persist once this app is deployed (see below), so
-finish this step before you rely on the Purchased tab in production.
+column, the checkbox falls back to writing a local file (`data/purchased.json`)
+instead. That file only works on the machine that wrote it — it will NOT
+persist once this app is deployed (see below), so finish this step before you
+rely on the Purchased tab in production.
 
 ## Source code
 
@@ -96,16 +95,15 @@ The code is on GitHub (private): https://github.com/Axe3ventures/hoa-auction-pro
 
 1. Go to https://vercel.com and sign in with GitHub.
 2. **Add New... → Project** → import `Axe3ventures/hoa-auction-proforma-tool`.
-3. Under **Root Directory**, click Edit and select `webapp` (the Next.js app lives in
-   that subfolder, not the repo root).
-4. Under **Environment Variables**, add the same ones from `webapp/.env.local`:
+   Root Directory can stay at its default (the app lives at the repo root).
+3. Under **Environment Variables**, add the same ones from `.env.local`:
    - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
    - `GOOGLE_PRIVATE_KEY` (paste with the `\n` sequences intact)
    - `GOOGLE_SHEET_ID`
    - `GOOGLE_SHEET_RANGE_SHERIFF`
    - `GOOGLE_SHEET_RANGE_NTS`
-5. Click **Deploy**. Vercel builds and gives you a live `*.vercel.app` URL.
-6. From then on, every `git push` to `master` auto-redeploys.
+4. Click **Deploy**. Vercel builds and gives you a live `*.vercel.app` URL.
+5. From then on, every `git push` to `master` auto-redeploys.
 
 Important: on Vercel the filesystem is read-only in production, so the local
 `data/purchased.json` fallback won't work there — make sure the Google Sheet is
@@ -115,4 +113,4 @@ relying on that tab once deployed, or Purchased clicks will silently not stick.
 ## Moving this to another machine
 
 This is a standard Next.js app — no special local dependencies. Clone the repo
-above and run `npm install && npm run dev` from inside `webapp/` anywhere.
+above and run `npm install && npm run dev` anywhere.
