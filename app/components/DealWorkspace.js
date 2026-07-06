@@ -115,7 +115,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
     setSelectedId(p.id);
     const cfg = configFor(p);
     const arv = Math.round((p.redfin + p.zillow + p.caliber) / 3) || p.zillow || p.redfin || p.caliber || 0;
-    setPurchasePrice(Math.round(p.judgment * 1.05));
+    setPurchasePrice(Math.round(p.judgment));
     setRemodelCost(30000);
     setSalePrice(arv);
     setSellerClosingCost(Math.round(p.mortgageBalance + p.hudAmount));
@@ -123,16 +123,31 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
   }
 
   async function handleTogglePurchased(p) {
-    if (dealType === "purchased") {
-      await fetch(`/api/purchased?id=${encodeURIComponent(p.id)}&dealType=${encodeURIComponent(p.sourceType)}`, {
-        method: "DELETE",
-      });
-    } else {
-      await fetch("/api/purchased", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: p.id, dealType: p.sourceType }),
-      });
+    let result;
+    try {
+      const res =
+        dealType === "purchased"
+          ? await fetch(`/api/purchased?id=${encodeURIComponent(p.id)}&dealType=${encodeURIComponent(p.sourceType)}`, {
+              method: "DELETE",
+            })
+          : await fetch("/api/purchased", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: p.id, dealType: p.sourceType }),
+            });
+      result = await res.json();
+      if (!res.ok || result.ok === false) {
+        alert(`Couldn't update Purchased status: ${result.error || "unknown error"}`);
+        return;
+      }
+    } catch (err) {
+      alert(`Couldn't update Purchased status: ${err.message}`);
+      return;
+    }
+    if (result.persistedTo === "local") {
+      alert(
+        'Saved locally only — this won\'t persist online. Add a "Purchased" column to this sheet tab and share it with the service account as Editor to make this stick.'
+      );
     }
     refreshProperties(true);
   }
@@ -282,7 +297,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
                   step={500}
                   format={fmtUSD}
                   onChange={setPurchasePrice}
-                  hint={`What you bid at auction (defaults to ${activeConfig.judgmentLabel.toLowerCase()} + 5%)`}
+                  hint={`What you bid at auction (defaults to ${activeConfig.judgmentLabel.toLowerCase()})`}
                 />
                 <Slider
                   label="Remodel Cost"

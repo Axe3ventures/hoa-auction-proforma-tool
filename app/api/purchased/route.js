@@ -43,8 +43,13 @@ export async function POST(request) {
   if (!id || !dealType) {
     return NextResponse.json({ error: "id and dealType are required" }, { status: 400 });
   }
-  const wroteToSheet = await setPurchasedFlag(String(id), dealType, true);
-  return NextResponse.json({ persistedTo: wroteToSheet ? "google-sheets" : "local" });
+  try {
+    const wroteToSheet = await setPurchasedFlag(String(id), dealType, true);
+    return NextResponse.json({ ok: true, persistedTo: wroteToSheet ? "google-sheets" : "local" });
+  } catch (err) {
+    console.error(`POST /api/purchased failed for ${dealType}/${id}:`, err);
+    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+  }
 }
 
 export async function DELETE(request) {
@@ -54,6 +59,11 @@ export async function DELETE(request) {
   if (!id || !dealType) {
     return NextResponse.json({ error: "id and dealType are required" }, { status: 400 });
   }
-  const wroteToSheet = await setPurchasedFlag(id, dealType, false);
-  return NextResponse.json({ persistedTo: wroteToSheet ? "google-sheets" : "local" });
+  try {
+    const wroteToSheet = await setPurchasedFlag(id, dealType, false);
+    return NextResponse.json({ ok: true, persistedTo: wroteToSheet ? "google-sheets" : "local" });
+  } catch (err) {
+    console.error(`DELETE /api/purchased failed for ${dealType}/${id}:`, err);
+    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+  }
 }
