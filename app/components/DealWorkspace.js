@@ -439,6 +439,14 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
                 <div className="label">Total Cost</div>
                 <div className="amount">{fmtUSD(result.totalCost)}</div>
               </div>
+              <div className="resultCard expense">
+                <div className="label">Closing Costs (1% of Sale Price)</div>
+                <div className="amount">{fmtUSD(result.routineClosingCosts)}</div>
+              </div>
+              <div className="resultCard expense">
+                <div className="label">Broker Commission (5% of Sale Price)</div>
+                <div className="amount">{fmtUSD(result.brokerCommission)}</div>
+              </div>
               <div className="resultCard profit">
                 <div className="label">Total Profit</div>
                 <div className={`amount ${profitClass}`}>{fmtUSD(result.totalProfit)}</div>

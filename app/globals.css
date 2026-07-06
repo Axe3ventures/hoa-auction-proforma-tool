@@ -218,6 +218,9 @@ body {
 .resultCard .sub { font-size: 12px; color: #8a93a6; margin-top: 4px; }
 .resultCard.profit .amount.positive { color: #6ee7a0; }
 .resultCard.profit .amount.negative { color: #f28b82; }
+.resultCard.expense { border-color: #4a2f2f; }
+.resultCard.expense .amount { color: #f28b82; }
+.resultCard.expense .amount::before { content: "-"; }
 
 .hint { font-size: 12px; color: #8a93a6; margin-top: 4px; }
 
