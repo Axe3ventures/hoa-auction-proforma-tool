@@ -83,6 +83,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
 
   const [purchaseFormPrice, setPurchaseFormPrice] = useState("");
   const [purchaseFormBuyer, setPurchaseFormBuyer] = useState("");
+  const [finalSaleFormPrice, setFinalSaleFormPrice] = useState("");
 
   // The Purchased tab mixes properties originally sourced from Sheriff Sales and
   // NTS, each with their own goal/profit conventions — look those up per property
@@ -124,11 +125,15 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     const arv = Math.round((p.redfin + p.zillow + p.caliber) / 3) || p.zillow || p.redfin || p.caliber || 0;
     setPurchasePrice(Math.round(p.judgment));
     setRemodelCost(30000);
-    setSalePrice(arv);
+    // Once a final sale price has actually been recorded, that's the real
+    // number to build the proforma around — otherwise fall back to the ARV
+    // estimate (average of Redfin/Zillow/Caliber).
+    setSalePrice(p.finalSalePrice > 0 ? p.finalSalePrice : arv);
     setSellerClosingCost(Math.round(p.mortgageBalance + p.hudAmount));
     setCycleDays(cfg.goalDays || 180);
     setPurchaseFormPrice("");
     setPurchaseFormBuyer("");
+    setFinalSaleFormPrice(p.finalSalePrice > 0 ? String(p.finalSalePrice) : "");
   }
 
   function warnIfLocalOnly(result) {
@@ -185,6 +190,33 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       return;
     }
     warnIfLocalOnly(result);
+    refreshProperties(true);
+  }
+
+  async function handleSetFinalSalePrice(p) {
+    const finalSalePrice = parseFloat(finalSaleFormPrice);
+    if (!finalSalePrice || finalSalePrice <= 0) {
+      alert("Enter a valid final sale price.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/final-sale-price", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id, dealType: p.sourceType, finalSalePrice }),
+      });
+      const result = await res.json();
+      if (!res.ok || result.ok === false) {
+        alert(`Couldn't save final sale price: ${result.error || "unknown error"}`);
+        return;
+      }
+    } catch (err) {
+      alert(`Couldn't save final sale price: ${err.message}`);
+      return;
+    }
+    // Immediately drive the Sale Price (ARV) slider / profit calc from the
+    // real number instead of waiting on a refetch + reselect round trip.
+    setSalePrice(finalSalePrice);
     refreshProperties(true);
   }
 
@@ -296,6 +328,28 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                 <div className="purchaseBox">
                   <div className="factRow"><span>Purchased By</span><span className="val">{selected.purchaser || "(you)"}</span></div>
                   <div className="factRow"><span>Purchase Price</span><span className="val">{fmtUSD(selected.purchasePrice)}</span></div>
+                  <form
+                    style={{ margin: "8px 0" }}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSetFinalSalePrice(selected);
+                    }}
+                  >
+                    <label className="purchaseField">
+                      Final Sale Price <span className="hint">(sets the Sale Price slider below once recorded)</span>
+                      <div className="buyerInputRow">
+                        <input
+                          type="number"
+                          placeholder="e.g. 410000"
+                          value={finalSaleFormPrice}
+                          onChange={(e) => setFinalSaleFormPrice(e.target.value)}
+                        />
+                        <button type="submit" className="purchaseButton small">
+                          Save
+                        </button>
+                      </div>
+                    </label>
+                  </form>
                   <div className="factRow"><span>Purchase Date</span><span className="val">{fmtDate(selected.purchasedDate)}</span></div>
                   {dealType === "purchased-other" && (
                     <div className="factRow"><span>Follow-Up Reminder</span><span className="val">{fmtDate(selected.followUpDate)}</span></div>
@@ -399,7 +453,11 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                   step={1000}
                   format={fmtUSD}
                   onChange={setSalePrice}
-                  hint="Defaults to average of Redfin/Zillow/Caliber"
+                  hint={
+                    selected?.finalSalePrice > 0
+                      ? "Using the recorded Final Sale Price"
+                      : "Defaults to average of Redfin/Zillow/Caliber"
+                  }
                 />
               </div>
               <div>

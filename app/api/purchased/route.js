@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listPurchased, markPurchased, unmarkPurchased } from "../../../lib/purchasedStore";
-import { writePurchaseInfo, setRowColor } from "../../../lib/googleSheets";
+import { writePurchaseInfo, setRowColor, writeFinalSalePrice } from "../../../lib/googleSheets";
 import { sheetNameFor } from "../../../lib/sheetConfig";
 import { isSelfPurchase, addDays } from "../../../lib/purchaseClassification";
 import { DEAL_CONFIG } from "../../../lib/dealConfig";
@@ -31,6 +31,14 @@ async function setPurchaseDetails(id, dealType, { price, purchaser }) {
     await setRowColor(sheetName, id, colorName).catch((err) => {
       console.error(`Failed to set row color for ${dealType}/${id}:`, err.message);
     });
+    // Un-purchasing means it's back up for sale — a previously recorded final
+    // sale price no longer applies, so clear it rather than leaving stale
+    // data behind for the next time this row is actually sold.
+    if (!price) {
+      await writeFinalSalePrice(sheetName, id, "").catch((err) => {
+        console.error(`Failed to clear final sale price for ${dealType}/${id}:`, err.message);
+      });
+    }
     // The sheet is now the source of truth — clear any stale local entry so
     // the two stores can't disagree.
     unmarkPurchased(id, dealType);

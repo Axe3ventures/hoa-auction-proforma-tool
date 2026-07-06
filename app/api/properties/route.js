@@ -183,6 +183,10 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
       const purchasePrice = toNum(sheetPurchase?.price) || toNum(localEntry?.price);
       const purchaser = sheetPurchase?.purchaser || localEntry?.purchaser || "";
       const purchasedDate = sheetPurchase?.purchasedDate || localEntry?.purchasedAt || "";
+      // The actual resale/flip price, recorded independently and later than
+      // the auction purchase — distinct from purchasePrice (what was paid to
+      // acquire it). Once set, the UI uses this instead of the ARV estimate.
+      const finalSalePrice = toNum(sheetPurchase?.finalSalePrice);
       // "self" (blank or "I Purchased" typed in) routes to the Purchased tab
       // and highlights green; any other name typed into Purchased By means
       // someone else won the deal — routes to Purchased by Other and
@@ -198,6 +202,7 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
         purchasePrice,
         purchaser,
         purchasedDate,
+        finalSalePrice,
         // Reminder to follow up on a deal someone else bought — per-deal-type
         // follow-up window (see DEAL_CONFIG[sourceType].followUpDays).
         followUpDate:
