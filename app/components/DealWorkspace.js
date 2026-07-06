@@ -240,7 +240,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
             {filtered.length === 0 && source && (
               <div className="hint">
                 {dealType === "purchased"
-                  ? "No purchased homes yet — enter a sale price on a property's Base Figures panel (Sheriff Sales or NTS tab) and click Mark Purchased to move it here."
+                  ? "No purchased homes yet — enter a sale price on a property's Base Figures panel (Sheriff Sales or NTS tab) and click I Purchased to move it here."
                   : "No properties match."}
               </div>
             )}
@@ -316,7 +316,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
                       />
                     </label>
                     <button className="purchaseButton" onClick={() => handleMarkPurchased(selected)}>
-                      Mark Purchased
+                      I Purchased
                     </button>
                   </div>
                 </div>
