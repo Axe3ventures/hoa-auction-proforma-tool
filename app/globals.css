@@ -136,6 +136,13 @@ body {
   color: #cfd6e4;
 }
 .purchaseButton.secondary:hover { background: #1c2333; }
+.purchaseButton.small { padding: 8px 12px; }
+
+.buyerInputRow {
+  display: flex;
+  gap: 8px;
+}
+.buyerInputRow input { flex: 1 1 auto; min-width: 0; }
 
 .sourceBadge {
   display: inline-block;

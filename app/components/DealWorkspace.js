@@ -306,7 +306,13 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
                 </div>
               ) : (
                 <div className="purchaseBox">
-                  <div className="purchaseInputsRow">
+                  <form
+                    className="purchaseInputsRow"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleMarkPurchased(selected);
+                    }}
+                  >
                     <label className="purchaseField">
                       Sale Price
                       <input
@@ -318,17 +324,22 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
                     </label>
                     <label className="purchaseField">
                       Purchased By <span className="hint">(leave blank or "I Purchased" if it's you — any other name moves it to Purchased by Other)</span>
-                      <input
-                        type="text"
-                        placeholder="Name"
-                        value={purchaseFormBuyer}
-                        onChange={(e) => setPurchaseFormBuyer(e.target.value)}
-                      />
+                      <div className="buyerInputRow">
+                        <input
+                          type="text"
+                          placeholder="Name"
+                          value={purchaseFormBuyer}
+                          onChange={(e) => setPurchaseFormBuyer(e.target.value)}
+                        />
+                        <button type="submit" className="purchaseButton small">
+                          Enter
+                        </button>
+                      </div>
                     </label>
-                    <button className="purchaseButton" onClick={() => handleMarkPurchased(selected)}>
+                    <button type="submit" className="purchaseButton">
                       {isSelfPurchase(purchaseFormBuyer) ? "I Purchased" : "Mark Purchased by Other"}
                     </button>
-                  </div>
+                  </form>
                 </div>
               )}
             </div>
