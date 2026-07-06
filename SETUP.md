@@ -88,10 +88,31 @@ column, the checkbox falls back to writing a local file
 that wrote it — it will NOT persist once this app is deployed (see below), so
 finish this step before you rely on the Purchased tab in production.
 
-## Moving this to another machine or hosting it online later
+## Source code
 
-This is a standard Next.js app — no special local dependencies. To move it:
-- Copy the `webapp/` folder (or put it in git) and run `npm install && npm run dev` anywhere.
-- To host it so it's reachable from a URL instead of just localhost, deploy to
-  Vercel (`npx vercel` from inside `webapp/`) and paste the same four env vars
-  into the Vercel project's Environment Variables settings. No code changes needed.
+The code is on GitHub (private): https://github.com/Axe3ventures/hoa-auction-proforma-tool
+
+## Deploying to Vercel (publish it online)
+
+1. Go to https://vercel.com and sign in with GitHub.
+2. **Add New... → Project** → import `Axe3ventures/hoa-auction-proforma-tool`.
+3. Under **Root Directory**, click Edit and select `webapp` (the Next.js app lives in
+   that subfolder, not the repo root).
+4. Under **Environment Variables**, add the same ones from `webapp/.env.local`:
+   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
+   - `GOOGLE_PRIVATE_KEY` (paste with the `\n` sequences intact)
+   - `GOOGLE_SHEET_ID`
+   - `GOOGLE_SHEET_RANGE_SHERIFF`
+   - `GOOGLE_SHEET_RANGE_NTS`
+5. Click **Deploy**. Vercel builds and gives you a live `*.vercel.app` URL.
+6. From then on, every `git push` to `master` auto-redeploys.
+
+Important: on Vercel the filesystem is read-only in production, so the local
+`data/purchased.json` fallback won't work there — make sure the Google Sheet is
+connected with Editor access and has the `Purchased` column (see above) before
+relying on that tab once deployed, or Purchased clicks will silently not stick.
+
+## Moving this to another machine
+
+This is a standard Next.js app — no special local dependencies. Clone the repo
+above and run `npm install && npm run dev` from inside `webapp/` anywhere.
