@@ -94,6 +94,14 @@ instead. That file only works on the machine that wrote it — it will NOT
 persist once this app is deployed (see below), so finish this step before you
 rely on the Purchased tab in production.
 
+**Troubleshooting the Purchased checkbox not doing anything**: the #1 cause is
+that the `Purchased` column exists in the cleaned local xlsx file but was
+never added to your actual **live** Google Sheet (the two are separate files —
+updating one doesn't update the other). Add a column with the exact header
+text `Purchased` to both the `Auction` and `NTS` tabs on the live sheet. The
+app will now show an alert if a click fails or only saves locally, so you'll
+know immediately if this step is still missing.
+
 ## Source code
 
 The code is on GitHub (private): https://github.com/Axe3ventures/hoa-auction-proforma-tool
