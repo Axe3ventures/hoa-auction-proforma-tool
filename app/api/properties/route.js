@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { fetchSheetRows, fetchRowColors, fetchPurchaseInfo } from "../../../lib/googleSheets";
 import { listPurchased } from "../../../lib/purchasedStore";
 import { SHEET_RANGES, sheetNameFor } from "../../../lib/sheetConfig";
-import { classifySale, addMonths } from "../../../lib/purchaseClassification";
+import { classifySale, addDays } from "../../../lib/purchaseClassification";
+import { DEAL_CONFIG } from "../../../lib/dealConfig";
 import sheriffFallbackRows from "../../../data/auction-sample.json";
 
 // NTS (Notice of Trustee Sale / Trustee Sale) deals live on a separate "NTS" tab
@@ -197,8 +198,10 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
         purchasePrice,
         purchaser,
         purchasedDate,
-        // Reminder to follow up on a deal someone else bought — 9 months out.
-        followUpDate: saleClass === "other" ? addMonths(purchasedDate, 9) : "",
+        // Reminder to follow up on a deal someone else bought — per-deal-type
+        // follow-up window (see DEAL_CONFIG[sourceType].followUpDays).
+        followUpDate:
+          saleClass === "other" ? addDays(purchasedDate, DEAL_CONFIG[sourceType]?.followUpDays ?? 270) : "",
         address: r.Address || "",
         city: r.City || "",
         zip: r.Zip || "",
