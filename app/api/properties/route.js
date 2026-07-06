@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { fetchSheetRows } from "../../../lib/googleSheets";
+import { fetchSheetRows, fetchRowColors } from "../../../lib/googleSheets";
 import { listPurchased } from "../../../lib/purchasedStore";
-import { SHEET_RANGES } from "../../../lib/sheetConfig";
+import { SHEET_RANGES, sheetNameFor } from "../../../lib/sheetConfig";
 import sheriffFallbackRows from "../../../data/auction-sample.json";
 
 // NTS (Notice of Trustee Sale / Trustee Sale) deals live on a separate "NTS" tab
@@ -96,18 +96,24 @@ function isWithinAuctionWindow(auctionDateStr) {
   return d >= start && d <= end;
 }
 
-function normalize(rows, sourceType) {
+// `colors` is the array from fetchRowColors, aligned 1:1 with `rows` (both
+// exclude the header row) — null when colors couldn't be read (no Sheets
+// connection, or a local-sample fallback, which has no color data at all).
+function normalize(rows, sourceType, colors) {
   return rows
     .filter((r) => r.ID)
-    .map((r) => {
+    .map((r, i) => {
       const { mortgageBalance, hudAmount, mortgageModified } = resolveMortgage(r);
+      const rowColor = colors?.[i] || "none";
       return {
         id: String(r.ID),
         sourceType,
-        // "Purchased" column on the sheet itself, when present — this is the
-        // durable signal once Google Sheets write access is configured; the
-        // local file registry (below) is only a fallback for sample data.
-        purchased: (r.Purchased || "").toString().trim().toLowerCase() === "true",
+        rowColor,
+        // "Purchased" column on the sheet itself, when present, OR the row
+        // manually highlighted green — either is a durable signal once Google
+        // Sheets write access is configured; the local file registry (below)
+        // is only a fallback for sample data.
+        purchased: (r.Purchased || "").toString().trim().toLowerCase() === "true" || rowColor === "green",
         address: r.Address || "",
         city: r.City || "",
         zip: r.Zip || "",
@@ -139,13 +145,21 @@ async function loadSourceProperties(sourceKey) {
   try {
     const rows = await fetchSheetRows(config.range);
     if (rows) {
-      return { source: "google-sheets", properties: normalize(rows, sourceKey) };
+      const colors = await fetchRowColors(sheetNameFor(sourceKey)).catch((err) => {
+        console.error(`Failed to read row colors for type=${sourceKey}:`, err.message);
+        return null;
+      });
+      return { source: "google-sheets", properties: normalize(rows, sourceKey, colors) };
     }
   } catch (err) {
     console.error(`Google Sheets fetch failed for type=${sourceKey}, using local sample data:`, err.message);
   }
-  return { source: "local-sample", properties: normalize(config.fallback, sourceKey) };
+  return { source: "local-sample", properties: normalize(config.fallback, sourceKey, null) };
 }
+
+// A row highlighted red in the Sheet is a dead deal — drop it everywhere,
+// including the Purchased tab, regardless of its Purchased/green status.
+const notEliminated = (p) => p.rowColor !== "red";
 
 export async function GET(request) {
   const type = new URL(request.url).searchParams.get("type") || "sheriff";
@@ -158,7 +172,9 @@ export async function GET(request) {
       loadSourceProperties("sheriff"),
       loadSourceProperties("nts"),
     ]);
-    const properties = [...sheriffData.properties, ...ntsData.properties].filter(isPurchased);
+    const properties = [...sheriffData.properties, ...ntsData.properties]
+      .filter(notEliminated)
+      .filter(isPurchased);
     const source =
       sheriffData.source === "google-sheets" || ntsData.source === "google-sheets"
         ? "google-sheets"
@@ -168,6 +184,8 @@ export async function GET(request) {
 
   const sourceKey = type === "nts" ? "nts" : "sheriff";
   const { source, properties } = await loadSourceProperties(sourceKey);
-  const visible = properties.filter((p) => isWithinAuctionWindow(p.auctionDate) && !isPurchased(p));
+  const visible = properties
+    .filter(notEliminated)
+    .filter((p) => isWithinAuctionWindow(p.auctionDate) && !isPurchased(p));
   return NextResponse.json({ source, properties: visible });
 }

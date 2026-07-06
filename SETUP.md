@@ -15,8 +15,15 @@
     sell within 60 days; Max Bid is calculated to hit a 10% minimum ROI.
   - **Purchased** (`/purchased`) — check the "Purchased" box on the Base Figures
     panel of either page above and the property moves here indefinitely (no
-    3-month auction-date restriction). Unchecking it moves it back.
+    3-month auction-date restriction). Unchecking it moves it back. Checking it
+    also highlights that row green on the Sheet; unchecking clears it.
   - A tab toggle at the top of the page switches between them.
+  - **Row color conventions (when connected to a live Sheet)**: if you manually
+    highlight a row **red** in the Sheet, it's dropped from every tab entirely —
+    use that for dead deals. If you highlight a row **green**, it's treated as
+    already purchased and filed under the Purchased tab automatically, the same
+    as checking the box. This works with any shade of red/green from the Sheets
+    fill-color palette, not just one exact color.
   - Run it locally now; it works immediately using bundled sample data (both tabs
     currently show the same sample rows until you add a real "NTS" tab — see below).
     Once you finish the Google Cloud steps, it automatically switches to reading

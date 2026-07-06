@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listPurchased, markPurchased, unmarkPurchased } from "../../../lib/purchasedStore";
-import { writePurchasedFlag } from "../../../lib/googleSheets";
+import { writePurchasedFlag, setRowColor } from "../../../lib/googleSheets";
 import { sheetNameFor } from "../../../lib/sheetConfig";
 
 export async function GET() {
@@ -8,10 +8,20 @@ export async function GET() {
 }
 
 async function setPurchasedFlag(id, dealType, purchased) {
-  const wroteToSheet = await writePurchasedFlag(sheetNameFor(dealType), id, purchased).catch((err) => {
+  const sheetName = sheetNameFor(dealType);
+  const wroteToSheet = await writePurchasedFlag(sheetName, id, purchased).catch((err) => {
     console.error(`Failed to write Purchased flag to Google Sheets for ${dealType}/${id}:`, err.message);
     return false;
   });
+
+  if (wroteToSheet) {
+    // Highlight the row green to match the checkbox, or clear it back to
+    // white on uncheck — otherwise a leftover green highlight would make the
+    // row look purchased again the next time colors are read.
+    await setRowColor(sheetName, id, purchased ? "green" : "none").catch((err) => {
+      console.error(`Failed to set row color for ${dealType}/${id}:`, err.message);
+    });
+  }
 
   // The local file is the source of truth only for sample data (no Google
   // Sheets write access configured, or the sheet has no "Purchased" column
