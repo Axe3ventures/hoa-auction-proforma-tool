@@ -68,7 +68,7 @@ function NotesPanel({ property }) {
   );
 }
 
-export default function DealWorkspace({ dealType, title, goalDays, targetROI, judgmentLabel }) {
+export default function DealWorkspace({ dealType, title, goalDays, targetProfit, judgmentLabel }) {
   const [properties, setProperties] = useState([]);
   const [source, setSource] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
@@ -85,7 +85,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
   const [purchaseFormBuyer, setPurchaseFormBuyer] = useState("");
 
   // The Purchased tab mixes properties originally sourced from Sheriff Sales and
-  // NTS, each with their own goal/ROI conventions — look those up per property
+  // NTS, each with their own goal/profit conventions — look those up per property
   // instead of using one static config for the whole page.
   function configFor(p) {
     if (isPurchasedTab(dealType) && p) {
@@ -94,7 +94,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
     return {
       title: title || "Properties",
       goalDays: goalDays || 180,
-      targetROI: targetROI ?? 0.15,
+      targetProfit: targetProfit ?? 50000,
       judgmentLabel: judgmentLabel || "Judgment",
     };
   }
@@ -205,8 +205,8 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
   );
 
   const maxBid = useMemo(
-    () => computeMaxBid({ remodelCost, salePrice, sellerClosingCost, targetROI: activeConfig.targetROI }),
-    [remodelCost, salePrice, sellerClosingCost, activeConfig.targetROI]
+    () => computeMaxBid({ remodelCost, salePrice, sellerClosingCost, targetProfit: activeConfig.targetProfit }),
+    [remodelCost, salePrice, sellerClosingCost, activeConfig.targetProfit]
   );
 
   const filtered = properties.filter((p) =>
@@ -346,10 +346,10 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
           )}
 
           <div className="panel maxBidPanel" style={{ marginBottom: 20 }}>
-            <p className="sectionTitle">Max Bid &mdash; {fmtPct(activeConfig.targetROI)} Minimum ROI Target</p>
+            <p className="sectionTitle">Max Bid &mdash; {fmtUSD(activeConfig.targetProfit)} Minimum Profit Target</p>
             <div className="bigNumber">{fmtUSD(Math.max(maxBid, 0))}</div>
             <div className="hint">
-              The most you can bid at auction and still clear a {fmtPct(activeConfig.targetROI)} ROI, given the
+              The most you can bid at auction and still clear {fmtUSD(activeConfig.targetProfit)} in profit, given the
               Remodel Cost, Sale Price, and Seller Closing Cost sliders below (goal: sell within {activeConfig.goalDays} days).
             </div>
             <div className={`bidRoom ${bidRoomClass}`}>
@@ -360,7 +360,11 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
             <div className="atBidCallout">
               <div className="label">Likely Profit at Your Bid Price ({fmtUSD(purchasePrice)})</div>
               <div className={`amount ${profitClass}`}>{fmtUSD(result.totalProfit)}</div>
-              <div className="sub">{fmtPct(result.totalROI)} ROI &middot; {fmtPct(result.annualizedTotalROI)} annualized</div>
+              <div className="sub">
+                {result.totalProfit >= activeConfig.targetProfit
+                  ? `${fmtUSD(result.totalProfit - activeConfig.targetProfit)} above target`
+                  : `${fmtUSD(activeConfig.targetProfit - result.totalProfit)} below target`}
+              </div>
             </div>
           </div>
 

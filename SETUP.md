@@ -9,9 +9,9 @@
 - The Next.js app (this folder — `app/`, `lib/`, `package.json`, etc. all live at
   the repo root), with three pages sharing the same layout:
   - **Sheriff Sales** (`/`) — HOA-judgment foreclosure deals. Goal: sell within 240
-    days; Max Bid is calculated to hit a 25% minimum ROI.
+    days; Max Bid is calculated to leave at least $50,000 profit.
   - **NTS / Trustee Sale** (`/nts`) — mortgage/deed-of-trust foreclosure deals. Goal:
-    sell within 60 days; Max Bid is calculated to hit a 10% minimum ROI.
+    sell within 90 days; Max Bid is calculated to leave at least $50,000 profit.
   - **Purchased** (`/purchased`) — on a property's Base Figures panel (Sheriff
     Sales or NTS tab), enter the **Sale Price** it actually sold for (required)
     and, if someone other than you bought it, their name in **Purchased By**
