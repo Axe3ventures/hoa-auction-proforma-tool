@@ -5,25 +5,27 @@
 - `Auction Sheet - Google Sheets Ready.xlsx` — your Auction Spreadsheet, cleaned up:
   the messy `HUD` column has been split into a numeric `HUD_Amount` (auto-parsed) and
   `HUD_Notes_Raw` (original text, for anything the parser guessed wrong). Column
-  headers are also renamed to be unambiguous (`Judgment`, `Mortgage_Balance`, etc.),
-  and a blank `Purchased` column has been added at the end for the checkbox below.
+  headers are also renamed to be unambiguous (`Judgment`, `Mortgage_Balance`, etc.).
 - The Next.js app (this folder — `app/`, `lib/`, `package.json`, etc. all live at
   the repo root), with three pages sharing the same layout:
   - **Sheriff Sales** (`/`) — HOA-judgment foreclosure deals. Goal: sell within 240
     days; Max Bid is calculated to hit a 25% minimum ROI.
   - **NTS / Trustee Sale** (`/nts`) — mortgage/deed-of-trust foreclosure deals. Goal:
     sell within 60 days; Max Bid is calculated to hit a 10% minimum ROI.
-  - **Purchased** (`/purchased`) — check the "Purchased" box on the Base Figures
-    panel of either page above and the property moves here indefinitely (no
-    3-month auction-date restriction). Unchecking it moves it back. Checking it
-    also highlights that row green on the Sheet; unchecking clears it.
+  - **Purchased** (`/purchased`) — on a property's Base Figures panel (Sheriff
+    Sales or NTS tab), enter the **Sale Price** it actually sold for (required)
+    and, if someone other than you bought it, their name in **Purchased By**
+    (leave blank if it was you), then click **Mark Purchased**. The property
+    moves here indefinitely (no 3-month auction-date restriction) and the row
+    is highlighted green on the Sheet. On the Purchased tab, a **Move Back /
+    Undo Purchase** button clears both fields and the highlight, moving it back.
   - A tab toggle at the top of the page switches between them.
   - **Row color conventions (when connected to a live Sheet)**: if you manually
     highlight a row **red** in the Sheet, it's dropped from every tab entirely —
-    use that for dead deals. If you highlight a row **green**, it's treated as
-    already purchased and filed under the Purchased tab automatically, the same
-    as checking the box. This works with any shade of red/green from the Sheets
-    fill-color palette, not just one exact color.
+    use that for dead deals. If you highlight a row **green** (without going
+    through Mark Purchased), it's treated as already purchased and filed under
+    the Purchased tab automatically. This works with any shade of red/green
+    from the Sheets fill-color palette, not just one exact color.
   - Run it locally now; it works immediately using bundled sample data (both tabs
     currently show the same sample rows until you add a real "NTS" tab — see below).
     Once you finish the Google Cloud steps, it automatically switches to reading
@@ -53,9 +55,13 @@ keep the same column headers so the app can read it. The `/nts` page reads from
 this tab.
 
 Keep using this Google Sheet as your live tracker going forward — add new rows
-as new properties come up, and the app will pick them up automatically. Both tabs
-need a blank `Purchased` column (already included in the cleaned file) — the
-Purchased checkbox writes `TRUE`/blank into that column by matching the row's `ID`.
+as new properties come up, and the app will pick them up automatically. Marking
+a property purchased writes the buyer's name and sale price into columns **AD**
+(Purchaser) and **AE** (Price), matching the row by its `ID` column — these are
+fixed columns regardless of header text, chosen because they're the first
+genuinely empty columns after your existing data (don't put anything else
+there). If your sheet's layout is different and AD/AE aren't actually empty,
+tell me and I'll point the app at different columns instead.
 
 ### 2. Create a Google Cloud project + enable the Sheets API
 1. Go to https://console.cloud.google.com/ and create a new project (or pick an existing one).
@@ -102,7 +108,7 @@ fresh token.
 4. Open the downloaded JSON, find the `client_email` field (looks like
    `auction-sheet-reader@your-project.iam.gserviceaccount.com`). In your Google
    Sheet, click **Share** and add that email as an **Editor** (not just Viewer —
-   the Purchased checkbox needs to write back to the sheet).
+   marking something Purchased needs to write back to the sheet).
 5. `cp .env.example .env.local`, then fill in:
    - `GOOGLE_SERVICE_ACCOUNT_EMAIL` — the `client_email` from the JSON key.
    - `GOOGLE_PRIVATE_KEY` — the `private_key` field from the JSON key, quoted,
@@ -119,19 +125,12 @@ Whichever option you picked above, also set:
 
 Restart `npm run dev`. The badge should switch to "Live: Google Sheets".
 
-Note: until the sheet is connected with Editor access and has a `Purchased`
-column, the checkbox falls back to writing a local file (`data/purchased.json`)
-instead. That file only works on the machine that wrote it — it will NOT
-persist once this app is deployed (see below), so finish this step before you
-rely on the Purchased tab in production.
-
-**Troubleshooting the Purchased checkbox not doing anything**: the #1 cause is
-that the `Purchased` column exists in the cleaned local xlsx file but was
-never added to your actual **live** Google Sheet (the two are separate files —
-updating one doesn't update the other). Add a column with the exact header
-text `Purchased` to both the `Auction` and `NTS` tabs on the live sheet. The
-app will now show an alert if a click fails or only saves locally, so you'll
-know immediately if this step is still missing.
+Note: until the sheet is connected with Editor access, marking something
+Purchased falls back to writing a local file (`data/purchased.json`) instead.
+That file only works on the machine that wrote it — it will NOT persist once
+this app is deployed (see below), so finish this step before you rely on the
+Purchased tab in production. The app shows an alert if a click fails or only
+saves locally, so you'll know immediately if this step is still missing.
 
 ## Source code
 
@@ -154,17 +153,18 @@ The code is on GitHub (private): https://github.com/Axe3ventures/hoa-auction-pro
 
 Important: on Vercel the filesystem is read-only in production, so the local
 `data/purchased.json` fallback won't work there — make sure the Google Sheet
-connection (OAuth or service account with Editor access) and the `Purchased`
-column (see above) are both set up before relying on that tab once deployed,
-or Purchased clicks will silently not stick.
+connection (OAuth or service account with Editor access) is set up before
+relying on the Purchased tab once deployed, or Mark Purchased clicks will
+silently not stick.
 
 ## Self-diagnosing the connection
 
 Visit `<your-deployed-url>/api/debug?type=sheriff` (or `?type=nts`) any time.
 It reports: which auth mode is active, whether the target tab was found, the
-header row and whether `ID`/`Purchased` columns were detected, sample row
-background colors (raw values + how they're classified), and a real
-Editor/write-access test. No secrets are included in the response.
+header row and whether the `ID` column was detected, sample row background
+colors (raw values + how they're classified), sample purchaser/price data
+from columns AD/AE, and a real Editor/write-access test. No secrets are
+included in the response.
 
 ## Moving this to another machine
 

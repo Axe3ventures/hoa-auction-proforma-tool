@@ -77,6 +77,9 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
   const [investorSplitPct, setInvestorSplitPct] = useState(0.5);
   const [cycleDays, setCycleDays] = useState(goalDays || 180);
 
+  const [purchaseFormPrice, setPurchaseFormPrice] = useState("");
+  const [purchaseFormBuyer, setPurchaseFormBuyer] = useState("");
+
   // The Purchased tab mixes properties originally sourced from Sheriff Sales and
   // NTS, each with their own goal/ROI conventions — look those up per property
   // instead of using one static config for the whole page.
@@ -120,35 +123,64 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
     setSalePrice(arv);
     setSellerClosingCost(Math.round(p.mortgageBalance + p.hudAmount));
     setCycleDays(cfg.goalDays || 180);
+    setPurchaseFormPrice("");
+    setPurchaseFormBuyer("");
   }
 
-  async function handleTogglePurchased(p) {
+  function warnIfLocalOnly(result) {
+    if (result.persistedTo === "local") {
+      alert(
+        "Saved locally only — this won't persist online. Make sure the Google Sheet is connected " +
+          "with Editor access to record purchases there instead."
+      );
+    }
+  }
+
+  async function handleMarkPurchased(p) {
+    const price = parseFloat(purchaseFormPrice);
+    if (!price || price <= 0) {
+      alert("Enter a valid sale price before marking this purchased.");
+      return;
+    }
     let result;
     try {
-      const res =
-        dealType === "purchased"
-          ? await fetch(`/api/purchased?id=${encodeURIComponent(p.id)}&dealType=${encodeURIComponent(p.sourceType)}`, {
-              method: "DELETE",
-            })
-          : await fetch("/api/purchased", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: p.id, dealType: p.sourceType }),
-            });
+      const res = await fetch("/api/purchased", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id, dealType: p.sourceType, price, purchaser: purchaseFormBuyer.trim() }),
+      });
       result = await res.json();
       if (!res.ok || result.ok === false) {
-        alert(`Couldn't update Purchased status: ${result.error || "unknown error"}`);
+        alert(`Couldn't mark as purchased: ${result.error || "unknown error"}`);
         return;
       }
     } catch (err) {
-      alert(`Couldn't update Purchased status: ${err.message}`);
+      alert(`Couldn't mark as purchased: ${err.message}`);
       return;
     }
-    if (result.persistedTo === "local") {
-      alert(
-        'Saved locally only — this won\'t persist online. Add a "Purchased" column to this sheet tab and share it with the service account as Editor to make this stick.'
+    warnIfLocalOnly(result);
+    setPurchaseFormPrice("");
+    setPurchaseFormBuyer("");
+    refreshProperties(true);
+  }
+
+  async function handleUnpurchase(p) {
+    let result;
+    try {
+      const res = await fetch(
+        `/api/purchased?id=${encodeURIComponent(p.id)}&dealType=${encodeURIComponent(p.sourceType)}`,
+        { method: "DELETE" }
       );
+      result = await res.json();
+      if (!res.ok || result.ok === false) {
+        alert(`Couldn't move this back: ${result.error || "unknown error"}`);
+        return;
+      }
+    } catch (err) {
+      alert(`Couldn't move this back: ${err.message}`);
+      return;
     }
+    warnIfLocalOnly(result);
     refreshProperties(true);
   }
 
@@ -208,7 +240,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
             {filtered.length === 0 && source && (
               <div className="hint">
                 {dealType === "purchased"
-                  ? "No purchased homes yet — check the Purchased box next to a property on the Sheriff Sales or NTS tab to move it here."
+                  ? "No purchased homes yet — enter a sale price on a property's Base Figures panel (Sheriff Sales or NTS tab) and click Mark Purchased to move it here."
                   : "No properties match."}
               </div>
             )}
@@ -235,17 +267,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
         <div>
           {selected && (
             <div className="panel" style={{ marginBottom: 20 }}>
-              <div className="sectionTitleRow">
-                <p className="sectionTitle">Base Figures &mdash; {selected.address}</p>
-                <label className="purchaseToggle">
-                  <input
-                    type="checkbox"
-                    checked={dealType === "purchased"}
-                    onChange={() => handleTogglePurchased(selected)}
-                  />
-                  Purchased
-                </label>
-              </div>
+              <p className="sectionTitle">Base Figures &mdash; {selected.address}</p>
               <div className="grid2">
                 <div>
                   <div className="factRow"><span>{activeConfig.judgmentLabel}</span><span className="val">{fmtUSD(selected.judgment)}</span></div>
@@ -263,6 +285,42 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
                   <div className="factRow"><span>Avg Comp (ARV)</span><span className="val">{fmtUSD(arv)}</span></div>
                 </div>
               </div>
+
+              {dealType === "purchased" ? (
+                <div className="purchaseBox">
+                  <div className="factRow"><span>Purchased By</span><span className="val">{selected.purchaser || "(you)"}</span></div>
+                  <div className="factRow"><span>Purchase Price</span><span className="val">{fmtUSD(selected.purchasePrice)}</span></div>
+                  <button className="purchaseButton secondary" onClick={() => handleUnpurchase(selected)}>
+                    Move Back / Undo Purchase
+                  </button>
+                </div>
+              ) : (
+                <div className="purchaseBox">
+                  <div className="purchaseInputsRow">
+                    <label className="purchaseField">
+                      Sale Price
+                      <input
+                        type="number"
+                        placeholder="e.g. 350000"
+                        value={purchaseFormPrice}
+                        onChange={(e) => setPurchaseFormPrice(e.target.value)}
+                      />
+                    </label>
+                    <label className="purchaseField">
+                      Purchased By <span className="hint">(leave blank if it's you)</span>
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={purchaseFormBuyer}
+                        onChange={(e) => setPurchaseFormBuyer(e.target.value)}
+                      />
+                    </label>
+                    <button className="purchaseButton" onClick={() => handleMarkPurchased(selected)}>
+                      Mark Purchased
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -359,10 +417,6 @@ export default function DealWorkspace({ dealType, title, goalDays, targetROI, ju
               <div className="resultCard">
                 <div className="label">Total Cost</div>
                 <div className="amount">{fmtUSD(result.totalCost)}</div>
-              </div>
-              <div className="resultCard">
-                <div className="label">Gross Proceeds</div>
-                <div className="amount">{fmtUSD(result.grossProceeds)}</div>
               </div>
               <div className="resultCard profit">
                 <div className="label">Total Profit</div>

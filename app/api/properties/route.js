@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchSheetRows, fetchRowColors } from "../../../lib/googleSheets";
+import { fetchSheetRows, fetchRowColors, fetchPurchaseInfo } from "../../../lib/googleSheets";
 import { listPurchased } from "../../../lib/purchasedStore";
 import { SHEET_RANGES, sheetNameFor } from "../../../lib/sheetConfig";
 import sheriffFallbackRows from "../../../data/auction-sample.json";
@@ -22,8 +22,70 @@ const AUCTION_WINDOW_MONTHS = 3;
 
 function toNum(v) {
   if (v === null || v === undefined || v === "") return 0;
-  const n = parseFloat(String(v).replace(/[^0-9.-]/g, ""));
-  return isNaN(n) ? 0 : n;
+  const s = String(v).trim();
+  const m = s.match(/(\d[\d,]*\.?\d*)\s*([km])?/i);
+  if (!m) return 0;
+  let n = parseFloat(m[1].replace(/,/g, ""));
+  if (isNaN(n)) return 0;
+  const suffix = (m[2] || "").toLowerCase();
+  if (suffix === "k") n *= 1000;
+  if (suffix === "m") n *= 1000000;
+  return n;
+}
+
+// Some sheets use the cleaned header names (from "Auction Sheet - Google
+// Sheets Ready.xlsx"), others still use the original raw spreadsheet's header
+// text — a live sheet the user uploaded directly, for instance. Each
+// canonical field checks both.
+const HEADER_ALIASES = {
+  Judgment: ["Judgment", "Jgmt"],
+  Mortgage_Balance: ["Mortgage_Balance", "Loan"],
+  Redfin_Value: ["Redfin_Value", "Redfin"],
+  Zillow_Value: ["Zillow_Value", "Zillow"],
+  Caliber_Value: ["Caliber_Value", "Caliber"],
+  Marc_Notes: ["Marc_Notes", "Marc"],
+  Loan_Type: ["Loan_Type", "Type"],
+  Plaintiff_HOA: ["Plaintiff_HOA", "Plantiff/HOA"],
+  Case_Number: ["Case_Number", "Case #"],
+  Auction_Date: ["Auction_Date", "Auction Date"],
+  Addl_Loan_Date: ["Addl_Loan_Date", "Addl Loan"],
+};
+
+function field(r, canonical) {
+  for (const alias of HEADER_ALIASES[canonical] || [canonical]) {
+    if (r[alias] !== undefined && r[alias] !== "") return r[alias];
+  }
+  return undefined;
+}
+
+// HUD_Amount, Lien_Type, Drive_By_Notes, and Deal_Notes have no header label
+// at all on an uncleaned raw sheet — only findable by position, immediately
+// after wherever the Addl Loan column actually is (itself found by name, so
+// this still works if extra columns like a manually-inserted "Purchased"
+// shift everything over). Column layout: Addl Loan, HUD raw (+1), Lien Type
+// (+2), a blank spacer (+3), Drive-By Notes (+4), Deal Notes (+5).
+function resolveNotesFields(r) {
+  if (r.HUD_Amount !== undefined || !r.__header) {
+    return {
+      hudAmount: r.HUD_Amount,
+      hudNotesRaw: r.HUD_Notes_Raw,
+      lienType: r.Lien_Type,
+      driveByNotes: r.Drive_By_Notes,
+      dealNotes: r.Deal_Notes,
+    };
+  }
+  const addlLoanIdx = r.__header.findIndex((h) => HEADER_ALIASES.Addl_Loan_Date.includes(h));
+  if (addlLoanIdx === -1) return {};
+  // On a raw (uncleaned) sheet there's just one column doing double duty as
+  // both the numeric HUD amount and its free-text description.
+  const hudRaw = r.__raw[addlLoanIdx + 1];
+  return {
+    hudAmount: hudRaw,
+    hudNotesRaw: hudRaw,
+    lienType: r.__raw[addlLoanIdx + 2],
+    driveByNotes: r.__raw[addlLoanIdx + 4],
+    dealNotes: r.__raw[addlLoanIdx + 5],
+  };
 }
 
 function normalizeLienLabel(s) {
@@ -62,10 +124,10 @@ function classifyAddlLoan(loanType, lienType, hudNotesRaw) {
   return "none";
 }
 
-function resolveMortgage(r) {
-  const originalMortgage = toNum(r.Mortgage_Balance);
-  const addlAmount = toNum(r.HUD_Amount);
-  const classification = classifyAddlLoan(r.Loan_Type, r.Lien_Type, r.HUD_Notes_Raw);
+function resolveMortgage(r, notes) {
+  const originalMortgage = toNum(field(r, "Mortgage_Balance"));
+  const addlAmount = toNum(notes.hudAmount);
+  const classification = classifyAddlLoan(field(r, "Loan_Type"), notes.lienType, notes.hudNotesRaw);
 
   if (classification === "modification" && addlAmount) {
     // The addl loan is a newer modification of the same mortgage — it becomes
@@ -96,76 +158,88 @@ function isWithinAuctionWindow(auctionDateStr) {
   return d >= start && d <= end;
 }
 
-// `colors` is the array from fetchRowColors, aligned 1:1 with `rows` (both
-// exclude the header row) — null when colors couldn't be read (no Sheets
-// connection, or a local-sample fallback, which has no color data at all).
-function normalize(rows, sourceType, colors) {
+// `colors` is from fetchRowColors and `purchaseInfo` is from fetchPurchaseInfo
+// (columns AB/AC), both aligned 1:1 with `rows` (all exclude the header row) —
+// null when they couldn't be read (no Sheets connection, or local-sample
+// fallback, neither of which have real color/purchase data).
+function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
   return rows
     .filter((r) => r.ID)
     .map((r, i) => {
-      const { mortgageBalance, hudAmount, mortgageModified } = resolveMortgage(r);
+      const notes = resolveNotesFields(r);
+      const { mortgageBalance, hudAmount, mortgageModified } = resolveMortgage(r, notes);
       const rowColor = colors?.[i] || "none";
+      const sheetPurchase = purchaseInfo?.[i];
+      const localEntry = localEntries?.find((e) => e.id === String(r.ID) && e.dealType === sourceType);
+      const purchasePrice = toNum(sheetPurchase?.price) || toNum(localEntry?.price);
+      const purchaser = sheetPurchase?.purchaser || localEntry?.purchaser || "";
       return {
         id: String(r.ID),
         sourceType,
         rowColor,
-        // "Purchased" column on the sheet itself, when present, OR the row
-        // manually highlighted green — either is a durable signal once Google
-        // Sheets write access is configured; the local file registry (below)
-        // is only a fallback for sample data.
-        purchased: (r.Purchased || "").toString().trim().toLowerCase() === "true" || rowColor === "green",
+        // Purchased once a sale price has actually been recorded (columns
+        // AD/AE on the sheet, matched by row ID), or the row was manually
+        // highlighted green in the Sheet.
+        purchased: purchasePrice > 0 || rowColor === "green",
+        purchasePrice,
+        purchaser,
         address: r.Address || "",
         city: r.City || "",
         zip: r.Zip || "",
         bed: r.Bed || "",
         bath: r.Bath || "",
         sqft: toNum(r.SqFt),
-        judgment: toNum(r.Judgment),
+        judgment: toNum(field(r, "Judgment")),
         mortgageBalance,
         hudAmount,
         mortgageModified,
-        hudNotes: r.HUD_Notes_Raw || "",
-        lienType: r.Lien_Type || "",
-        redfin: toNum(r.Redfin_Value),
-        zillow: toNum(r.Zillow_Value),
-        caliber: toNum(r.Caliber_Value),
-        plaintiff: r.Plaintiff_HOA || "",
-        auctionDate: r.Auction_Date || "",
+        hudNotes: notes.hudNotesRaw || "",
+        lienType: notes.lienType || "",
+        redfin: toNum(field(r, "Redfin_Value")),
+        zillow: toNum(field(r, "Zillow_Value")),
+        caliber: toNum(field(r, "Caliber_Value")),
+        plaintiff: field(r, "Plaintiff_HOA") || "",
+        auctionDate: field(r, "Auction_Date") || "",
         owner: r.Owner || "",
-        caseNumber: r.Case_Number || "",
-        loanNotes: r.Marc_Notes || "",
-        driveByNotes: r.Drive_By_Notes || "",
-        dealNotes: r.Deal_Notes || "",
+        caseNumber: field(r, "Case_Number") || "",
+        loanNotes: field(r, "Marc_Notes") || "",
+        driveByNotes: notes.driveByNotes || "",
+        dealNotes: notes.dealNotes || "",
       };
     });
 }
 
 async function loadSourceProperties(sourceKey) {
   const config = DEAL_TYPES[sourceKey];
+  const localEntries = listPurchased();
   try {
     const rows = await fetchSheetRows(config.range);
     if (rows) {
-      const colors = await fetchRowColors(sheetNameFor(sourceKey)).catch((err) => {
-        console.error(`Failed to read row colors for type=${sourceKey}:`, err.message);
-        return null;
-      });
-      return { source: "google-sheets", properties: normalize(rows, sourceKey, colors) };
+      const sheetName = sheetNameFor(sourceKey);
+      const [colors, purchaseInfo] = await Promise.all([
+        fetchRowColors(sheetName).catch((err) => {
+          console.error(`Failed to read row colors for type=${sourceKey}:`, err.message);
+          return null;
+        }),
+        fetchPurchaseInfo(sheetName).catch((err) => {
+          console.error(`Failed to read purchase info for type=${sourceKey}:`, err.message);
+          return null;
+        }),
+      ]);
+      return { source: "google-sheets", properties: normalize(rows, sourceKey, colors, purchaseInfo, localEntries) };
     }
   } catch (err) {
     console.error(`Google Sheets fetch failed for type=${sourceKey}, using local sample data:`, err.message);
   }
-  return { source: "local-sample", properties: normalize(config.fallback, sourceKey, null) };
+  return { source: "local-sample", properties: normalize(config.fallback, sourceKey, null, null, localEntries) };
 }
 
 // A row highlighted red in the Sheet is a dead deal — drop it everywhere,
-// including the Purchased tab, regardless of its Purchased/green status.
+// including the Purchased tab, regardless of its purchased status.
 const notEliminated = (p) => p.rowColor !== "red";
 
 export async function GET(request) {
   const type = new URL(request.url).searchParams.get("type") || "sheriff";
-  const purchasedEntries = listPurchased();
-  const isPurchased = (p) =>
-    p.purchased || purchasedEntries.some((e) => e.id === p.id && e.dealType === p.sourceType);
 
   if (type === "purchased") {
     const [sheriffData, ntsData] = await Promise.all([
@@ -174,7 +248,7 @@ export async function GET(request) {
     ]);
     const properties = [...sheriffData.properties, ...ntsData.properties]
       .filter(notEliminated)
-      .filter(isPurchased);
+      .filter((p) => p.purchased);
     const source =
       sheriffData.source === "google-sheets" || ntsData.source === "google-sheets"
         ? "google-sheets"
@@ -186,6 +260,6 @@ export async function GET(request) {
   const { source, properties } = await loadSourceProperties(sourceKey);
   const visible = properties
     .filter(notEliminated)
-    .filter((p) => isWithinAuctionWindow(p.auctionDate) && !isPurchased(p));
+    .filter((p) => isWithinAuctionWindow(p.auctionDate) && !p.purchased);
   return NextResponse.json({ source, properties: visible });
 }
