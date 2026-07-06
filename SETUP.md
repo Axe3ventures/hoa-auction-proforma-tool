@@ -61,30 +61,61 @@ Purchased checkbox writes `TRUE`/blank into that column by matching the row's `I
 1. Go to https://console.cloud.google.com/ and create a new project (or pick an existing one).
 2. In the search bar, search "Google Sheets API" → click it → **Enable**.
 
-### 3. Create a service account (this is how the app authenticates)
+### 3. Authenticate — pick ONE of these two options
+
+#### Option A: Connect via OAuth (your own Google account — no sharing step needed)
+Use this if you don't want to create/manage a service account JSON key. You
+authenticate as yourself, so you automatically have access to any sheet you
+can already open — no separate "Share with a robot email" step.
+
+1. In Cloud Console: **APIs & Services → Credentials → Create Credentials →
+   OAuth client ID**.
+2. If prompted, configure the **OAuth consent screen** first: User type
+   "External" is fine, publishing status can stay "Testing" — just add your
+   own Google account under **Test users**.
+3. Application type: **Web application**. Under **Authorized redirect URIs**,
+   add `http://localhost:3210/api/oauth/callback` (adjust the port if you run
+   `npm run dev` on a different one).
+4. Copy the **Client ID** and **Client Secret** shown after creating it.
+5. `cp .env.example .env.local`, then fill in `GOOGLE_OAUTH_CLIENT_ID` and
+   `GOOGLE_OAUTH_CLIENT_SECRET` with those values.
+6. Run `npm run dev`, then visit **http://localhost:3210/api/oauth/start** in
+   your browser. Sign in with the Google account that can open/edit the
+   sheet, and approve access.
+7. You'll land on a plain text page showing a refresh token — copy it into
+   `GOOGLE_OAUTH_REFRESH_TOKEN` in `.env.local`.
+8. Later, paste all three (`GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`,
+   `GOOGLE_OAUTH_REFRESH_TOKEN`) into Vercel's Environment Variables too — the
+   redirect URI above only needs to work locally, since you're just using it
+   once to mint a refresh token you then reuse everywhere.
+
+Caveat: while the OAuth consent screen is in "Testing" status, Google may
+expire this refresh token after a period of inactivity. If the connection
+silently reverts to "Sample data" after a while, just redo steps 6-7 to get a
+fresh token.
+
+#### Option B: Service account JSON key
 1. In Cloud Console: **IAM & Admin → Service Accounts → Create Service Account**.
 2. Give it any name (e.g. `auction-sheet-reader`). No roles needed — click through to Done.
 3. Click the new service account → **Keys** tab → **Add Key → Create new key → JSON**.
    This downloads a JSON file — keep it private, don't commit it anywhere.
+4. Open the downloaded JSON, find the `client_email` field (looks like
+   `auction-sheet-reader@your-project.iam.gserviceaccount.com`). In your Google
+   Sheet, click **Share** and add that email as an **Editor** (not just Viewer —
+   the Purchased checkbox needs to write back to the sheet).
+5. `cp .env.example .env.local`, then fill in:
+   - `GOOGLE_SERVICE_ACCOUNT_EMAIL` — the `client_email` from the JSON key.
+   - `GOOGLE_PRIVATE_KEY` — the `private_key` field from the JSON key, quoted,
+     keeping the `\n` sequences exactly as they appear (don't turn them into
+     real line breaks).
 
-### 4. Share your Google Sheet with the service account
-Open the downloaded JSON, find the `client_email` field (looks like
-`auction-sheet-reader@your-project.iam.gserviceaccount.com`). In your Google
-Sheet, click **Share** and add that email as an **Editor** (not just Viewer —
-the Purchased checkbox needs to write back to the sheet).
-
-### 5. Fill in your local environment file
-```
-cp .env.example .env.local
-```
-Edit `.env.local`:
-- `GOOGLE_SERVICE_ACCOUNT_EMAIL` — the `client_email` from the JSON key.
-- `GOOGLE_PRIVATE_KEY` — the `private_key` field from the JSON key, quoted, keeping
-  the `\n` sequences exactly as they appear (don't turn them into real line breaks).
+### 4. Fill in the rest of your local environment file
+Whichever option you picked above, also set:
 - `GOOGLE_SHEET_ID` — from your sheet's URL:
   `https://docs.google.com/spreadsheets/d/`**`THIS_PART`**`/edit`
-- `GOOGLE_SHEET_RANGE_SHERIFF` — leave as `Auction!A1:Z1000` if you kept the tab named `Auction`.
-- `GOOGLE_SHEET_RANGE_NTS` — leave as `NTS!A1:Z1000` once you've added the `NTS` tab.
+- `GOOGLE_SHEET_RANGE_SHERIFF` — the Sheriff Sales tab name + range, e.g. `Auction!A1:Z1000`
+  (use whatever your tab is actually named — it does NOT have to be "Auction").
+- `GOOGLE_SHEET_RANGE_NTS` — the NTS tab name + range, e.g. `NTS!A1:Z1000`.
 
 Restart `npm run dev`. The badge should switch to "Live: Google Sheets".
 
@@ -111,19 +142,29 @@ The code is on GitHub (private): https://github.com/Axe3ventures/hoa-auction-pro
 1. Go to https://vercel.com and sign in with GitHub.
 2. **Add New... → Project** → import `Axe3ventures/hoa-auction-proforma-tool`.
    Root Directory can stay at its default (the app lives at the repo root).
-3. Under **Environment Variables**, add the same ones from `.env.local`:
-   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
-   - `GOOGLE_PRIVATE_KEY` (paste with the `\n` sequences intact)
-   - `GOOGLE_SHEET_ID`
-   - `GOOGLE_SHEET_RANGE_SHERIFF`
-   - `GOOGLE_SHEET_RANGE_NTS`
+3. Under **Environment Variables**, add the same ones from `.env.local` — whichever
+   auth option you set up:
+   - OAuth: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN`
+   - Service account: `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` (paste with the `\n` sequences intact)
+   - Either way: `GOOGLE_SHEET_ID`, `GOOGLE_SHEET_RANGE_SHERIFF`, `GOOGLE_SHEET_RANGE_NTS`
 4. Click **Deploy**. Vercel builds and gives you a live `*.vercel.app` URL.
-5. From then on, every `git push` to `master` auto-redeploys.
+5. From then on, every `git push` to `master` auto-redeploys — but adding or
+   changing an environment variable does NOT trigger a redeploy by itself,
+   you need to hit **Redeploy** on the latest deployment for it to take effect.
 
 Important: on Vercel the filesystem is read-only in production, so the local
-`data/purchased.json` fallback won't work there — make sure the Google Sheet is
-connected with Editor access and has the `Purchased` column (see above) before
-relying on that tab once deployed, or Purchased clicks will silently not stick.
+`data/purchased.json` fallback won't work there — make sure the Google Sheet
+connection (OAuth or service account with Editor access) and the `Purchased`
+column (see above) are both set up before relying on that tab once deployed,
+or Purchased clicks will silently not stick.
+
+## Self-diagnosing the connection
+
+Visit `<your-deployed-url>/api/debug?type=sheriff` (or `?type=nts`) any time.
+It reports: which auth mode is active, whether the target tab was found, the
+header row and whether `ID`/`Purchased` columns were detected, sample row
+background colors (raw values + how they're classified), and a real
+Editor/write-access test. No secrets are included in the response.
 
 ## Moving this to another machine
 
