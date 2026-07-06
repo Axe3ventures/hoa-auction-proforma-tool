@@ -1,0 +1,17 @@
+// Shared per-deal-type constants. The Purchased tab mixes properties originally
+// sourced from both Sheriff Sales and NTS, so it looks up the right config per
+// property via `sourceType` instead of using one static config for the page.
+export const DEAL_CONFIG = {
+  sheriff: {
+    title: "Sheriff Sales",
+    goalDays: 240,
+    targetROI: 0.25,
+    judgmentLabel: "Judgment",
+  },
+  nts: {
+    title: "NTS (Trustee Sale)",
+    goalDays: 60,
+    targetROI: 0.1,
+    judgmentLabel: "Opening Bid / Payoff",
+  },
+};
