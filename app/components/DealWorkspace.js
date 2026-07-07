@@ -68,6 +68,46 @@ function NotesPanel({ property }) {
   );
 }
 
+function PhotosPanel({ photos, uploading, onUpload, onDelete }) {
+  return (
+    <div className="panel" style={{ marginBottom: 20 }}>
+      <p className="sectionTitle">Photos</p>
+      <div className="photoInputsRow">
+        <label className="purchaseButton small photoUploadLabel">
+          Take Photo
+          <input type="file" accept="image/*" capture="environment" onChange={(e) => onUpload(e.target.files)} />
+        </label>
+        <label className="purchaseButton small secondary photoUploadLabel">
+          Choose from Library
+          <input type="file" accept="image/*" multiple onChange={(e) => onUpload(e.target.files)} />
+        </label>
+        {uploading && <span className="hint">Uploading…</span>}
+      </div>
+      {photos.length === 0 ? (
+        <div className="hint" style={{ marginTop: 10 }}>
+          No photos yet — take one from your phone or upload from your library.
+        </div>
+      ) : (
+        <div className="photoGrid">
+          {photos.map((photo) => (
+            <div className="photoThumb" key={photo.id}>
+              <img src={`/api/photos/${photo.id}`} alt={photo.name} loading="lazy" />
+              <button
+                type="button"
+                className="photoDeleteBtn"
+                onClick={() => onDelete(photo.id)}
+                aria-label="Delete photo"
+              >
+                &times;
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DealWorkspace({ dealType, title, goalDays, targetProfit, judgmentLabel }) {
   const [properties, setProperties] = useState([]);
   const [source, setSource] = useState(null);
@@ -84,6 +124,9 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   const [purchaseFormPrice, setPurchaseFormPrice] = useState("");
   const [purchaseFormBuyer, setPurchaseFormBuyer] = useState("");
   const [finalSaleFormPrice, setFinalSaleFormPrice] = useState("");
+
+  const [photos, setPhotos] = useState([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // The Purchased tab mixes properties originally sourced from Sheriff Sales and
   // NTS, each with their own goal/profit conventions — look those up per property
@@ -134,6 +177,56 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     setPurchaseFormPrice("");
     setPurchaseFormBuyer("");
     setFinalSaleFormPrice(p.finalSalePrice > 0 ? String(p.finalSalePrice) : "");
+    refreshPhotos(p);
+  }
+
+  function refreshPhotos(p) {
+    if (!p) {
+      setPhotos([]);
+      return;
+    }
+    fetch(`/api/photos?id=${encodeURIComponent(p.id)}&dealType=${encodeURIComponent(p.sourceType)}`)
+      .then((r) => r.json())
+      .then((data) => setPhotos(data.photos || []))
+      .catch(() => setPhotos([]));
+  }
+
+  async function handleUploadPhoto(fileList) {
+    if (!selected || !fileList || fileList.length === 0) return;
+    setUploadingPhoto(true);
+    for (const file of Array.from(fileList)) {
+      const formData = new FormData();
+      formData.append("id", selected.id);
+      formData.append("dealType", selected.sourceType);
+      formData.append("file", file);
+      try {
+        const res = await fetch("/api/photos", { method: "POST", body: formData });
+        const result = await res.json();
+        if (!res.ok || result.ok === false) {
+          alert(`Couldn't upload photo: ${result.error || "unknown error"}`);
+        }
+      } catch (err) {
+        alert(`Couldn't upload photo: ${err.message}`);
+      }
+    }
+    setUploadingPhoto(false);
+    refreshPhotos(selected);
+  }
+
+  async function handleDeletePhoto(fileId) {
+    if (!confirm("Delete this photo?")) return;
+    try {
+      const res = await fetch(`/api/photos?fileId=${encodeURIComponent(fileId)}`, { method: "DELETE" });
+      const result = await res.json();
+      if (!res.ok || result.ok === false) {
+        alert(`Couldn't delete photo: ${result.error || "unknown error"}`);
+        return;
+      }
+    } catch (err) {
+      alert(`Couldn't delete photo: ${err.message}`);
+      return;
+    }
+    refreshPhotos(selected);
   }
 
   function warnIfLocalOnly(result) {
@@ -531,6 +624,15 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
               </div>
             </div>
           </div>
+
+          {selected && (
+            <PhotosPanel
+              photos={photos}
+              uploading={uploadingPhoto}
+              onUpload={handleUploadPhoto}
+              onDelete={handleDeletePhoto}
+            />
+          )}
 
           {selected && <NotesPanel property={selected} />}
         </div>

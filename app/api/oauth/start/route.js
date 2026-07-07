@@ -24,7 +24,9 @@ export async function GET(request) {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent", // forces Google to issue a refresh_token even if you've authorized this app before
-    scope: ["https://www.googleapis.com/auth/spreadsheets"],
+    // drive.file (not full drive access) — lets the app create/read/delete
+    // only the photo files it uploads itself, nothing else in your Drive.
+    scope: ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive.file"],
   });
 
   return NextResponse.redirect(authUrl);
