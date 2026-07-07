@@ -198,6 +198,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       const formData = new FormData();
       formData.append("id", selected.id);
       formData.append("dealType", selected.sourceType);
+      formData.append("address", selected.address || "");
       formData.append("file", file);
       try {
         const res = await fetch("/api/photos", { method: "POST", body: formData });

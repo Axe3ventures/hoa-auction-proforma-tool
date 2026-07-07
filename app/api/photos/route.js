@@ -21,13 +21,14 @@ export async function POST(request) {
   const formData = await request.formData();
   const id = formData.get("id");
   const dealType = formData.get("dealType");
+  const address = formData.get("address");
   const file = formData.get("file");
   if (!id || !dealType || !file) {
     return NextResponse.json({ ok: false, error: "id, dealType, and file are required" }, { status: 400 });
   }
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await uploadPhoto(dealType, String(id), buffer, file.type, file.name);
+    const result = await uploadPhoto(dealType, String(id), address || "", buffer, file.type, file.name);
     if (!result.ok) {
       return NextResponse.json({ ok: false, error: result.error }, { status: 500 });
     }
