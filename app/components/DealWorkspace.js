@@ -13,6 +13,39 @@ const fmtUSD = (n) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtPct = (n) => `${(n * 100).toFixed(1)}%`;
 
+function ThemeToggle() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    if (stored === "dark") {
+      setIsDark(true);
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }, []);
+
+  function toggle() {
+    const next = !isDark;
+    setIsDark(next);
+    if (next) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+    localStorage.setItem("theme", next ? "dark" : "light");
+  }
+
+  return (
+    <label className="themeSwitch">
+      <input type="checkbox" checked={isDark} onChange={toggle} />
+      <span className="themeSwitchTrack">
+        <span className="themeSwitchThumb" />
+      </span>
+      <span>{isDark ? "Dark" : "Light"}</span>
+    </label>
+  );
+}
+
 function Slider({ label, value, min, max, step, format, onChange, hint }) {
   return (
     <div className="sliderRow">
@@ -423,11 +456,14 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     <div className="wrap">
       <div className="header">
         <h1>Auction ProForma</h1>
-        {source && (
-          <span className={`badge ${source === "google-sheets" ? "live" : "sample"}`}>
-            {source === "google-sheets" ? "Live: Google Sheets" : "Sample data (Google Sheets not configured)"}
-          </span>
-        )}
+        <div className="headerRight">
+          {source && (
+            <span className={`badge ${source === "google-sheets" ? "live" : "sample"}`}>
+              {source === "google-sheets" ? "Live: Google Sheets" : "Sample data (Google Sheets not configured)"}
+            </span>
+          )}
+          <ThemeToggle />
+        </div>
       </div>
 
       <NavTabs />
