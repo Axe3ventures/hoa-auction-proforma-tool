@@ -238,13 +238,28 @@ body {
   border-radius: 6px;
   padding: 10px 12px;
 }
+.noteItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
 .noteLabel {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #8a93a6;
-  margin-bottom: 4px;
 }
+.noteDeleteBtn {
+  border: none;
+  background: transparent;
+  color: #f28b82;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.noteDeleteBtn:hover { text-decoration: underline; }
 .noteText {
   font-size: 13px;
   color: #cfd6e4;

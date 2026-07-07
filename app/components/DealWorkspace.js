@@ -33,9 +33,9 @@ function Slider({ label, value, min, max, step, format, onChange, hint }) {
   );
 }
 
-function NotesPanel({ property, noteText, onNoteChange, onSaveNote, savingNote }) {
+function NotesPanel({ property, noteText, onNoteChange, onSaveNote, savingNote, onClearNotes }) {
   const notes = [
-    { label: "Condition / Drive-By Notes", text: property.driveByNotes },
+    { label: "Condition / Drive-By Notes", text: property.driveByNotes, clearable: true },
     { label: "Deal Notes", text: property.dealNotes },
     { label: "Loan / Lien History Notes", text: property.loanNotes },
     { label: "HUD Notes (raw)", text: property.hudNotes },
@@ -58,7 +58,14 @@ function NotesPanel({ property, noteText, onNoteChange, onSaveNote, savingNote }
         <div className="notesBox">
           {notes.map((n) => (
             <div className="noteItem" key={n.label}>
-              <div className="noteLabel">{n.label}</div>
+              <div className="noteItemHeader">
+                <div className="noteLabel">{n.label}</div>
+                {n.clearable && (
+                  <button type="button" className="noteDeleteBtn" onClick={onClearNotes}>
+                    Delete
+                  </button>
+                )}
+              </div>
               <div className="noteText">{n.text}</div>
             </div>
           ))}
@@ -275,6 +282,26 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     }
     setNoteText("");
     setSavingNote(false);
+    refreshProperties(true);
+  }
+
+  async function handleClearNotes() {
+    if (!selected) return;
+    if (!confirm("Delete all Drive-By Notes for this property? This can't be undone.")) return;
+    try {
+      const res = await fetch(
+        `/api/notes?id=${encodeURIComponent(selected.id)}&dealType=${encodeURIComponent(selected.sourceType)}`,
+        { method: "DELETE" }
+      );
+      const result = await res.json();
+      if (!res.ok || result.ok === false) {
+        alert(`Couldn't delete notes: ${result.error || "unknown error"}`);
+        return;
+      }
+    } catch (err) {
+      alert(`Couldn't delete notes: ${err.message}`);
+      return;
+    }
     refreshProperties(true);
   }
 
@@ -690,6 +717,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
               onNoteChange={setNoteText}
               onSaveNote={handleSaveNote}
               savingNote={savingNote}
+              onClearNotes={handleClearNotes}
             />
           )}
         </div>
