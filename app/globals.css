@@ -252,6 +252,23 @@ body {
   line-height: 1.4;
 }
 
+.addNoteBox {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #232c40;
+}
+.noteTextarea {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #2a3348;
+  background: #0f1420;
+  color: #e6e9ef;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  margin-top: 4px;
+}
+
 .maxBidPanel {
   border: 1px solid #3b5aa0;
   background: linear-gradient(180deg, #161c2b 0%, #131a2c 100%);

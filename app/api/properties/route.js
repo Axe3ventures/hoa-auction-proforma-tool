@@ -51,6 +51,7 @@ const HEADER_ALIASES = {
   Case_Number: ["Case_Number", "Case #"],
   Auction_Date: ["Auction_Date", "Auction Date"],
   Addl_Loan_Date: ["Addl_Loan_Date", "Addl Loan"],
+  Drive_By_Notes: ["Drive_By_Notes", "Drive By Notes"],
 };
 
 function field(r, canonical) {
@@ -230,7 +231,11 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
         owner: r.Owner || "",
         caseNumber: field(r, "Case_Number") || "",
         loanNotes: field(r, "Marc_Notes") || "",
-        driveByNotes: notes.driveByNotes || "",
+        // Read by header name (a real "Drive By Notes" column, added at AA)
+        // rather than position — works on both Sheriff Sale and NTS, unlike
+        // the Addl-Loan-relative positional guess the other raw fields use.
+        // Falls back to the old positional value for defense in depth only.
+        driveByNotes: field(r, "Drive_By_Notes") || notes.driveByNotes || "",
         dealNotes: notes.dealNotes || "",
       };
     });

@@ -33,7 +33,7 @@ function Slider({ label, value, min, max, step, format, onChange, hint }) {
   );
 }
 
-function NotesPanel({ property }) {
+function NotesPanel({ property, noteText, onNoteChange, onSaveNote, savingNote }) {
   const notes = [
     { label: "Condition / Drive-By Notes", text: property.driveByNotes },
     { label: "Deal Notes", text: property.dealNotes },
@@ -64,6 +64,25 @@ function NotesPanel({ property }) {
           ))}
         </div>
       )}
+      <div className="addNoteBox">
+        <label className="purchaseField">
+          Add a Drive-By Note{" "}
+          <span className="hint">
+            (saved to the sheet, added to Condition / Drive-By Notes above — tap the mic icon on your iPhone
+            keyboard to dictate)
+          </span>
+          <textarea
+            className="noteTextarea"
+            rows={3}
+            placeholder="e.g. Front yard overgrown, garage door dented, no cars in driveway..."
+            value={noteText}
+            onChange={(e) => onNoteChange(e.target.value)}
+          />
+        </label>
+        <button type="button" className="purchaseButton small" onClick={onSaveNote} disabled={savingNote}>
+          {savingNote ? "Saving…" : "Save Note"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -128,6 +147,9 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   const [photos, setPhotos] = useState([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
   // The Purchased tab mixes properties originally sourced from Sheriff Sales and
   // NTS, each with their own goal/profit conventions — look those up per property
   // instead of using one static config for the whole page.
@@ -177,6 +199,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     setPurchaseFormPrice("");
     setPurchaseFormBuyer("");
     setFinalSaleFormPrice(p.finalSalePrice > 0 ? String(p.finalSalePrice) : "");
+    setNoteText("");
     refreshPhotos(p);
   }
 
@@ -228,6 +251,31 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       return;
     }
     refreshPhotos(selected);
+  }
+
+  async function handleSaveNote() {
+    if (!selected || !noteText.trim()) return;
+    setSavingNote(true);
+    try {
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selected.id, dealType: selected.sourceType, note: noteText }),
+      });
+      const result = await res.json();
+      if (!res.ok || result.ok === false) {
+        alert(`Couldn't save note: ${result.error || "unknown error"}`);
+        setSavingNote(false);
+        return;
+      }
+    } catch (err) {
+      alert(`Couldn't save note: ${err.message}`);
+      setSavingNote(false);
+      return;
+    }
+    setNoteText("");
+    setSavingNote(false);
+    refreshProperties(true);
   }
 
   function warnIfLocalOnly(result) {
@@ -635,7 +683,15 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
             />
           )}
 
-          {selected && <NotesPanel property={selected} />}
+          {selected && (
+            <NotesPanel
+              property={selected}
+              noteText={noteText}
+              onNoteChange={setNoteText}
+              onSaveNote={handleSaveNote}
+              savingNote={savingNote}
+            />
+          )}
         </div>
       </div>
     </div>
