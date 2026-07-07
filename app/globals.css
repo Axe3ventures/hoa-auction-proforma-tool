@@ -2,8 +2,8 @@
 body {
   margin: 0;
   font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  background: #0f1420;
-  color: #e6e9ef;
+  background: #eceff2;
+  color: #1b222c;
 }
 
 .wrap {
@@ -28,30 +28,30 @@ body {
   font-size: 12px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #1c2333;
-  border: 1px solid #2a3348;
+  background: #e6e9ee;
+  border: 1px solid #ccd2db;
 }
-.badge.live { color: #6ee7a0; border-color: #234a34; }
-.badge.sample { color: #f5c56b; border-color: #4a3d23; }
+.badge.live { color: #0f7a43; border-color: #b7e4c8; }
+.badge.sample { color: #8a5a00; border-color: #f0dca6; }
 
 .navTabs {
   display: flex;
   gap: 8px;
   margin-bottom: 20px;
-  border-bottom: 1px solid #232c40;
+  border-bottom: 1px solid #d3d9e0;
 }
 
 .navTab {
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #8a93a6;
+  color: #56606e;
   text-decoration: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
-.navTab:hover { color: #cfd6e4; }
-.navTab.active { color: #8fb8ff; border-bottom-color: #3b5aa0; }
+.navTab:hover { color: #1b222c; }
+.navTab.active { color: #1d4ed8; border-bottom-color: #2b5fd9; }
 
 .layout {
   display: grid;
@@ -60,8 +60,8 @@ body {
 }
 
 .panel {
-  background: #161c2b;
-  border: 1px solid #232c40;
+  background: #ffffff;
+  border: 1px solid #dbe0e6;
   border-radius: 10px;
   padding: 16px;
 }
@@ -80,18 +80,18 @@ body {
   border: 1px solid transparent;
   border-radius: 8px;
   padding: 10px;
-  color: #cfd6e4;
+  color: #1b222c;
   cursor: pointer;
 }
-.propItem:hover { background: #1c2333; }
-.propItem.active { background: #1e2a44; border-color: #3b5aa0; }
+.propItem:hover { background: #f1f3f6; }
+.propItem.active { background: #e8f0fe; border-color: #2b5fd9; }
 .propItem .addr { font-weight: 600; font-size: 13px; }
-.propItem .sub { font-size: 11px; color: #8a93a6; margin-top: 2px; }
+.propItem .sub { font-size: 11px; color: #56606e; margin-top: 2px; }
 
 .purchaseBox {
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid #232c40;
+  border-top: 1px solid #dbe0e6;
 }
 
 .purchaseInputsRow {
@@ -106,36 +106,36 @@ body {
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
-  color: #8a93a6;
+  color: #56606e;
   flex: 1 1 140px;
 }
 .purchaseField input {
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #2a3348;
-  background: #0f1420;
-  color: #e6e9ef;
+  border: 1px solid #c7ced7;
+  background: #ffffff;
+  color: #1b222c;
   font-size: 13px;
 }
 
 .purchaseButton {
   padding: 9px 16px;
   border-radius: 8px;
-  border: 1px solid #3b5aa0;
-  background: #1e2a44;
-  color: #8fb8ff;
+  border: 1px solid #2b5fd9;
+  background: #e8f0fe;
+  color: #1d4ed8;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
-.purchaseButton:hover { background: #24314f; }
+.purchaseButton:hover { background: #d9e6fd; }
 .purchaseButton.secondary {
-  border-color: #232c40;
+  border-color: #c7ced7;
   background: transparent;
-  color: #cfd6e4;
+  color: #1b222c;
 }
-.purchaseButton.secondary:hover { background: #1c2333; }
+.purchaseButton.secondary:hover { background: #f1f3f6; }
 .purchaseButton.small { padding: 8px 12px; }
 
 .buyerInputRow {
@@ -150,8 +150,8 @@ body {
   padding: 1px 6px;
   font-size: 10px;
   font-weight: 600;
-  color: #8fb8ff;
-  background: #1c2740;
+  color: #1d4ed8;
+  background: #e8f0fe;
   border-radius: 999px;
   vertical-align: middle;
 }
@@ -161,9 +161,9 @@ body {
   padding: 8px 10px;
   margin-bottom: 10px;
   border-radius: 8px;
-  border: 1px solid #2a3348;
-  background: #0f1420;
-  color: #e6e9ef;
+  border: 1px solid #c7ced7;
+  background: #ffffff;
+  color: #1b222c;
 }
 
 .grid2 {
@@ -176,7 +176,7 @@ body {
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #8a93a6;
+  color: #56606e;
   margin: 0 0 10px;
 }
 
@@ -184,7 +184,7 @@ body {
   display: flex;
   justify-content: space-between;
   padding: 6px 0;
-  border-bottom: 1px solid #1f2739;
+  border-bottom: 1px solid #e7eaef;
   font-size: 13px;
 }
 .factRow:last-child { border-bottom: none; }
@@ -197,7 +197,7 @@ body {
   font-size: 13px;
   margin-bottom: 6px;
 }
-.sliderRow label .value { font-weight: 700; color: #8fb8ff; }
+.sliderRow label .value { font-weight: 700; color: #1d4ed8; }
 .sliderRow input[type="range"] { width: 100%; }
 
 .resultsGrid {
@@ -208,21 +208,21 @@ body {
 }
 
 .resultCard {
-  background: #0f1420;
-  border: 1px solid #232c40;
+  background: #f5f6f8;
+  border: 1px solid #dbe0e6;
   border-radius: 8px;
   padding: 12px;
 }
-.resultCard .label { font-size: 11px; color: #8a93a6; text-transform: uppercase; letter-spacing: 0.04em; }
+.resultCard .label { font-size: 11px; color: #56606e; text-transform: uppercase; letter-spacing: 0.04em; }
 .resultCard .amount { font-size: 20px; font-weight: 700; margin-top: 4px; }
-.resultCard .sub { font-size: 12px; color: #8a93a6; margin-top: 4px; }
-.resultCard.profit .amount.positive { color: #6ee7a0; }
-.resultCard.profit .amount.negative { color: #f28b82; }
-.resultCard.expense { border-color: #4a2f2f; }
-.resultCard.expense .amount { color: #f28b82; }
+.resultCard .sub { font-size: 12px; color: #56606e; margin-top: 4px; }
+.resultCard.profit .amount.positive { color: #0f7a43; }
+.resultCard.profit .amount.negative { color: #c0392b; }
+.resultCard.expense { border-color: #f3d3ce; }
+.resultCard.expense .amount { color: #c0392b; }
 .resultCard.expense .amount::before { content: "-"; }
 
-.hint { font-size: 12px; color: #8a93a6; margin-top: 4px; }
+.hint { font-size: 12px; color: #56606e; margin-top: 4px; }
 
 .notesBox {
   margin-top: 12px;
@@ -232,9 +232,9 @@ body {
 }
 
 .noteItem {
-  background: #0f1420;
-  border: 1px solid #232c40;
-  border-left: 3px solid #3b5aa0;
+  background: #f5f6f8;
+  border: 1px solid #dbe0e6;
+  border-left: 3px solid #2b5fd9;
   border-radius: 6px;
   padding: 10px 12px;
 }
@@ -248,12 +248,12 @@ body {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #8a93a6;
+  color: #56606e;
 }
 .noteDeleteBtn {
   border: none;
   background: transparent;
-  color: #f28b82;
+  color: #c0392b;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -262,7 +262,7 @@ body {
 .noteDeleteBtn:hover { text-decoration: underline; }
 .noteText {
   font-size: 13px;
-  color: #cfd6e4;
+  color: #1b222c;
   white-space: pre-wrap;
   line-height: 1.4;
 }
@@ -270,14 +270,14 @@ body {
 .addNoteBox {
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid #232c40;
+  border-top: 1px solid #dbe0e6;
 }
 .noteTextarea {
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #2a3348;
-  background: #0f1420;
-  color: #e6e9ef;
+  border: 1px solid #c7ced7;
+  background: #ffffff;
+  color: #1b222c;
   font-size: 13px;
   font-family: inherit;
   resize: vertical;
@@ -285,14 +285,14 @@ body {
 }
 
 .maxBidPanel {
-  border: 1px solid #3b5aa0;
-  background: linear-gradient(180deg, #161c2b 0%, #131a2c 100%);
+  border: 1px solid #2b5fd9;
+  background: linear-gradient(180deg, #ffffff 0%, #f0f5ff 100%);
 }
 
 .bigNumber {
   font-size: 48px;
   font-weight: 800;
-  color: #8fb8ff;
+  color: #1d4ed8;
   line-height: 1.1;
   margin: 6px 0 8px;
 }
@@ -302,19 +302,19 @@ body {
   font-weight: 600;
   margin-top: 8px;
 }
-.bidRoom.positive { color: #6ee7a0; }
-.bidRoom.negative { color: #f28b82; }
+.bidRoom.positive { color: #0f7a43; }
+.bidRoom.negative { color: #c0392b; }
 
 .atBidCallout {
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid #232c40;
+  border-top: 1px solid #dbe0e6;
 }
-.atBidCallout .label { font-size: 11px; color: #8a93a6; text-transform: uppercase; letter-spacing: 0.04em; }
+.atBidCallout .label { font-size: 11px; color: #56606e; text-transform: uppercase; letter-spacing: 0.04em; }
 .atBidCallout .amount { font-size: 26px; font-weight: 700; margin-top: 4px; }
-.atBidCallout .amount.positive { color: #6ee7a0; }
-.atBidCallout .amount.negative { color: #f28b82; }
-.atBidCallout .sub { font-size: 12px; color: #8a93a6; margin-top: 4px; }
+.atBidCallout .amount.positive { color: #0f7a43; }
+.atBidCallout .amount.negative { color: #c0392b; }
+.atBidCallout .sub { font-size: 12px; color: #56606e; margin-top: 4px; }
 
 .photoInputsRow {
   display: flex;
@@ -338,8 +338,8 @@ body {
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #232c40;
-  background: #0f1420;
+  border: 1px solid #dbe0e6;
+  background: #f5f6f8;
 }
 .photoThumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
@@ -350,9 +350,9 @@ body {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: none;
-  background: rgba(15, 20, 32, 0.85);
-  color: #f28b82;
+  border: 1px solid #e2c2be;
+  background: rgba(255, 255, 255, 0.92);
+  color: #c0392b;
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
@@ -360,7 +360,7 @@ body {
   align-items: center;
   justify-content: center;
 }
-.photoDeleteBtn:hover { background: rgba(242, 139, 130, 0.2); }
+.photoDeleteBtn:hover { background: rgba(192, 57, 43, 0.12); }
 
 /* Mobile — this app is meant to be usable standing at a house on a phone,
    taking drive-by photos, not just at a desk. */
