@@ -46,7 +46,7 @@ function ThemeToggle() {
   );
 }
 
-function Slider({ label, value, min, max, step, format, onChange, hint }) {
+function Slider({ label, value, min, max, step, format, onChange, hint, disabled }) {
   return (
     <div className="sliderRow">
       <label>
@@ -59,8 +59,31 @@ function Slider({ label, value, min, max, step, format, onChange, hint }) {
         max={max}
         step={step}
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange(parseFloat(e.target.value))}
       />
+      {hint && <div className="hint">{hint}</div>}
+    </div>
+  );
+}
+
+function NumberField({ label, value, step, prefix, suffix, disabled, onChange, hint }) {
+  return (
+    <div className="numberFieldRow">
+      <label>
+        <span>{label}</span>
+      </label>
+      <div className={`numberFieldInputWrap ${disabled ? "disabled" : ""}`}>
+        {prefix && <span className="numberFieldAffix">{prefix}</span>}
+        <input
+          type="number"
+          step={step || 1}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value === "" ? 0 : parseFloat(e.target.value))}
+        />
+        {suffix && <span className="numberFieldAffix">{suffix}</span>}
+      </div>
       {hint && <div className="hint">{hint}</div>}
     </div>
   );
@@ -199,6 +222,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   const [sellerClosingCost, setSellerClosingCost] = useState(0);
   const [investorSplitPct, setInvestorSplitPct] = useState(0.5);
   const [cycleDays, setCycleDays] = useState(goalDays || 180);
+  const [locked, setLocked] = useState(false);
 
   const [purchaseFormPrice, setPurchaseFormPrice] = useState("");
   const [purchaseFormBuyer, setPurchaseFormBuyer] = useState("");
@@ -256,6 +280,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     setSalePrice(p.finalSalePrice > 0 ? p.finalSalePrice : arv);
     setSellerClosingCost(Math.round(p.mortgageBalance + p.hudAmount));
     setCycleDays(cfg.goalDays || 180);
+    setLocked(false);
     setPurchaseFormPrice("");
     setPurchaseFormBuyer("");
     setFinalSaleFormPrice(p.finalSalePrice > 0 ? String(p.finalSalePrice) : "");
@@ -649,16 +674,24 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
           </div>
 
           <div className="panel" style={{ marginBottom: 20 }}>
-            <p className="sectionTitle">Sliding Scale</p>
+            <div className="sectionHeaderRow">
+              <p className="sectionTitle">Sliding Scale</p>
+              <button
+                type="button"
+                className={`purchaseButton small ${locked ? "" : "secondary"}`}
+                onClick={() => setLocked(!locked)}
+              >
+                {locked ? "🔒 Unlock to Edit" : "🔓 Lock Numbers"}
+              </button>
+            </div>
             <div className="grid2">
               <div>
-                <Slider
+                <NumberField
                   label="Purchase / Bid Price"
                   value={purchasePrice}
-                  min={0}
-                  max={selected ? Math.round(selected.judgment * 3 + 50000) : 500000}
                   step={500}
-                  format={fmtUSD}
+                  prefix="$"
+                  disabled={locked}
                   onChange={setPurchasePrice}
                   hint={`What you bid at auction (defaults to ${activeConfig.judgmentLabel.toLowerCase()})`}
                 />
@@ -669,6 +702,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                   max={200000}
                   step={500}
                   format={fmtUSD}
+                  disabled={locked}
                   onChange={setRemodelCost}
                 />
                 <Slider
@@ -678,6 +712,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                   max={arv ? Math.round(arv * 1.5) : 1000000}
                   step={1000}
                   format={fmtUSD}
+                  disabled={locked}
                   onChange={setSalePrice}
                   hint={
                     selected?.finalSalePrice > 0
@@ -694,6 +729,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                   max={selected ? Math.round((selected.mortgageBalance + selected.hudAmount) * 2 + 50000) : 500000}
                   step={500}
                   format={fmtUSD}
+                  disabled={locked}
                   onChange={setSellerClosingCost}
                   hint="Mortgage + HUD payoff needed to deliver clear title"
                 />
@@ -704,6 +740,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                   max={1}
                   step={0.05}
                   format={fmtPct}
+                  disabled={locked}
                   onChange={setInvestorSplitPct}
                 />
                 <Slider
@@ -713,6 +750,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                   max={365}
                   step={5}
                   format={(v) => `${v} days`}
+                  disabled={locked}
                   onChange={setCycleDays}
                   hint={`Goal for ${activeConfig.title}: ${activeConfig.goalDays} days`}
                 />

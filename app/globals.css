@@ -300,6 +300,44 @@ body {
 .factRow:last-child { border-bottom: none; }
 .factRow .val { font-weight: 600; }
 
+.sectionHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.sectionHeaderRow .sectionTitle { margin: 0; }
+
+.numberFieldRow { margin-bottom: 16px; }
+.numberFieldRow label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.numberFieldInputWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  padding: 0 10px;
+}
+.numberFieldInputWrap.disabled { background: var(--hover-bg); opacity: 0.75; }
+.numberFieldAffix { font-size: 13px; color: var(--muted); font-weight: 600; }
+.numberFieldInputWrap input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 9px 0;
+}
+.numberFieldInputWrap input:disabled { color: var(--muted); cursor: not-allowed; }
+.numberFieldInputWrap input:focus { outline: none; }
+
 .sliderRow { margin-bottom: 16px; }
 .sliderRow label {
   display: flex;
@@ -309,6 +347,7 @@ body {
 }
 .sliderRow label .value { font-weight: 700; color: var(--accent-text); }
 .sliderRow input[type="range"] { width: 100%; }
+.sliderRow input[type="range"]:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .resultsGrid {
   display: grid;
