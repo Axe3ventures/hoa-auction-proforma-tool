@@ -128,6 +128,8 @@ function NotesPanel({ property, noteText, onNoteChange, onSaveNote, savingNote, 
 }
 
 function PhotosPanel({ photos, uploading, onUpload, onDelete }) {
+  const [enlarged, setEnlarged] = useState(null);
+
   return (
     <div className="panel" style={{ marginBottom: 20 }}>
       <p className="sectionTitle">Photos</p>
@@ -150,7 +152,12 @@ function PhotosPanel({ photos, uploading, onUpload, onDelete }) {
         <div className="photoGrid">
           {photos.map((photo) => (
             <div className="photoThumb" key={photo.id}>
-              <img src={`/api/photos/${photo.id}`} alt={photo.name} loading="lazy" />
+              <img
+                src={`/api/photos/${photo.id}`}
+                alt={photo.name}
+                loading="lazy"
+                onClick={() => setEnlarged(photo)}
+              />
               <button
                 type="button"
                 className="photoDeleteBtn"
@@ -161,6 +168,19 @@ function PhotosPanel({ photos, uploading, onUpload, onDelete }) {
               </button>
             </div>
           ))}
+        </div>
+      )}
+      {enlarged && (
+        <div className="photoLightbox" onClick={() => setEnlarged(null)}>
+          <img src={`/api/photos/${enlarged.id}`} alt={enlarged.name} onClick={(e) => e.stopPropagation()} />
+          <button
+            type="button"
+            className="photoLightboxClose"
+            onClick={() => setEnlarged(null)}
+            aria-label="Close"
+          >
+            &times;
+          </button>
         </div>
       )}
     </div>
@@ -495,6 +515,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
               >
                 <div className="addr">
                   {p.address || `Property ${p.id}`}
+                  {p.auctionDate && <span className="auctionDateBadge">{p.auctionDate}</span>}
                   {isPurchasedTab(dealType) && (
                     <span className="sourceBadge">{DEAL_CONFIG[p.sourceType]?.title || p.sourceType}</span>
                   )}

@@ -189,6 +189,15 @@ body {
 .propItem .addr { font-weight: 600; font-size: 13px; }
 .propItem .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
+.auctionDateBadge {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--red);
+  vertical-align: middle;
+}
+
 .purchaseBox {
   margin-top: 16px;
   padding-top: 14px;
@@ -442,7 +451,7 @@ body {
   border: 1px solid var(--panel-border);
   background: var(--card-bg);
 }
-.photoThumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photoThumb img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
 
 .photoDeleteBtn {
   position: absolute;
@@ -462,6 +471,42 @@ body {
   justify-content: center;
 }
 .photoDeleteBtn:hover { background: var(--photo-delete-hover-bg); }
+
+.photoLightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+  cursor: zoom-out;
+}
+.photoLightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: default;
+}
+.photoLightboxClose {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.photoLightboxClose:hover { background: rgba(255, 255, 255, 0.25); }
 
 /* Mobile — this app is meant to be usable standing at a house on a phone,
    taking drive-by photos, not just at a desk. */
