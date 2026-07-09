@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { fetchSheetRows, fetchRowColors, fetchPurchaseInfo } from "../../../lib/googleSheets";
+import { fetchSheetRows, fetchRowColors, fetchPurchaseInfo, resolveSheetNameForDeal } from "../../../lib/googleSheets";
 import { listPurchased } from "../../../lib/purchasedStore";
-import { SHEET_RANGES, sheetNameFor } from "../../../lib/sheetConfig";
+import { SHEET_RANGES, cellRangeFor } from "../../../lib/sheetConfig";
 import { classifySale, addDays } from "../../../lib/purchaseClassification";
 import { DEAL_CONFIG } from "../../../lib/dealConfig";
 import sheriffFallbackRows from "../../../data/auction-sample.json";
@@ -256,9 +256,11 @@ async function loadSourceProperties(sourceKey) {
   const config = DEAL_TYPES[sourceKey];
   const localEntries = listPurchased();
   try {
-    const rows = await fetchSheetRows(config.range);
+    // Resolve the configured tab name to whatever tab actually exists (tolerates
+    // a rename like "Sheriff" -> "Sheriff Sale"), then read from that real name.
+    const sheetName = await resolveSheetNameForDeal(sourceKey);
+    const rows = await fetchSheetRows(`${sheetName}!${cellRangeFor(sourceKey)}`);
     if (rows) {
-      const sheetName = sheetNameFor(sourceKey);
       const [colors, purchaseInfo] = await Promise.all([
         fetchRowColors(sheetName).catch((err) => {
           console.error(`Failed to read row colors for type=${sourceKey}:`, err.message);

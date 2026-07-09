@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { writeFinalSalePrice } from "../../../lib/googleSheets";
-import { sheetNameFor } from "../../../lib/sheetConfig";
+import { writeFinalSalePrice, resolveSheetNameForDeal } from "../../../lib/googleSheets";
 
 export async function POST(request) {
   const { id, dealType, finalSalePrice } = await request.json();
@@ -8,7 +7,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "id, dealType, and finalSalePrice are required" }, { status: 400 });
   }
   try {
-    const sheetName = sheetNameFor(dealType);
+    const sheetName = await resolveSheetNameForDeal(dealType);
     const wrote = await writeFinalSalePrice(sheetName, String(id), finalSalePrice);
     if (!wrote) {
       return NextResponse.json(

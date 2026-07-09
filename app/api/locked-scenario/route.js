@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { writeLockedScenario } from "../../../lib/googleSheets";
-import { sheetNameFor } from "../../../lib/sheetConfig";
+import { writeLockedScenario, resolveSheetNameForDeal } from "../../../lib/googleSheets";
 
 export async function POST(request) {
   const { id, dealType, scenario } = await request.json();
@@ -8,7 +7,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: "id, dealType, and scenario are required" }, { status: 400 });
   }
   try {
-    const sheetName = sheetNameFor(dealType);
+    const sheetName = await resolveSheetNameForDeal(dealType);
     const wrote = await writeLockedScenario(sheetName, String(id), scenario);
     if (!wrote) {
       return NextResponse.json(
@@ -31,7 +30,7 @@ export async function DELETE(request) {
     return NextResponse.json({ error: "id and dealType are required" }, { status: 400 });
   }
   try {
-    const sheetName = sheetNameFor(dealType);
+    const sheetName = await resolveSheetNameForDeal(dealType);
     const wrote = await writeLockedScenario(sheetName, id, null);
     if (!wrote) {
       return NextResponse.json(

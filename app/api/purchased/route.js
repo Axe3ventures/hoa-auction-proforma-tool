@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { listPurchased, markPurchased, unmarkPurchased } from "../../../lib/purchasedStore";
-import { writePurchaseInfo, setRowColor, writeFinalSalePrice } from "../../../lib/googleSheets";
-import { sheetNameFor } from "../../../lib/sheetConfig";
+import { writePurchaseInfo, setRowColor, writeFinalSalePrice, resolveSheetNameForDeal } from "../../../lib/googleSheets";
 import { isSelfPurchase, addDays } from "../../../lib/purchaseClassification";
 import { DEAL_CONFIG } from "../../../lib/dealConfig";
 
@@ -10,7 +9,7 @@ export async function GET() {
 }
 
 async function setPurchaseDetails(id, dealType, { price, purchaser }) {
-  const sheetName = sheetNameFor(dealType);
+  const sheetName = await resolveSheetNameForDeal(dealType);
   const purchasedDate = price ? new Date().toISOString().slice(0, 10) : "";
   // Written to the sheet purely for visibility (the app itself recomputes
   // this independently in /api/properties) — a follow-up nudge only applies
