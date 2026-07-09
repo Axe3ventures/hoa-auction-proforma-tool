@@ -303,9 +303,17 @@ export async function GET(request) {
       loadSourceProperties("nts"),
     ]);
     const matches = type === "purchased" ? (p) => p.purchased : (p) => p.purchasedByOther;
+    // Newest first: sort by when it was purchased, falling back to the auction
+    // date for rows marked purchased via a manual row color (which records no
+    // purchase date). Undated rows sink to the bottom.
+    const sortStamp = (p) => {
+      const d = new Date(p.purchasedDate || p.auctionDate);
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    };
     const properties = [...sheriffData.properties, ...ntsData.properties]
       .filter(notEliminated)
-      .filter(matches);
+      .filter(matches)
+      .sort((a, b) => sortStamp(b) - sortStamp(a));
     const source =
       sheriffData.source === "google-sheets" || ntsData.source === "google-sheets"
         ? "google-sheets"
