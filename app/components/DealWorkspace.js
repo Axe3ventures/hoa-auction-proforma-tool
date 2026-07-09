@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { computeDeal, computeMaxBid } from "../../lib/proforma";
 import { DEAL_CONFIG } from "../../lib/dealConfig";
 import { isSelfPurchase } from "../../lib/purchaseClassification";
@@ -323,6 +323,13 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
 
+  // The Purchase/Bid Price last known to match the sheet's AF cell — used by
+  // the debounced sync effect below to skip writes when the value came FROM
+  // the sheet (or was already synced), so selecting a property never fires a
+  // pointless write and typing only syncs actual edits.
+  const syncedBidPrice = useRef(null);
+  const bidSyncTimer = useRef(null);
+
   // The Purchased tab mixes properties originally sourced from Sheriff Sales and
   // NTS, each with their own goal/profit conventions — look those up per property
   // instead of using one static config for the whole page.
@@ -361,11 +368,16 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     setSelectedId(p.id);
     const cfg = configFor(p);
     const arv = Math.round((p.redfin + p.zillow + p.caliber) / 3) || p.zillow || p.redfin || p.caliber || 0;
+    // A price already in the sheet's AF column (typed there manually, or
+    // synced from a previous session) overrides the judgment-based default.
+    const sheetBid = p.purchasePrice > 0 ? p.purchasePrice : 0;
     if (p.lockedScenario) {
       // A previously locked scenario persists across refreshes/relaunches —
       // restore those exact numbers instead of recomputing fresh defaults.
       const s = p.lockedScenario;
-      setPurchasePrice(s.purchasePrice ?? Math.round(p.judgment));
+      const initialBid = s.purchasePrice ?? (sheetBid || Math.round(p.judgment));
+      setPurchasePrice(initialBid);
+      syncedBidPrice.current = { id: p.id, price: initialBid };
       setRemodelCost(s.remodelCost ?? 30000);
       setSalePrice(s.salePrice ?? arv);
       setSellerClosingCost(s.sellerClosingCost ?? Math.round(p.mortgageBalance + p.hudAmount));
@@ -373,7 +385,9 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       setCycleDays(s.cycleDays ?? cfg.goalDays ?? 180);
       setLocked(true);
     } else {
-      setPurchasePrice(Math.round(p.judgment));
+      const initialBid = sheetBid || Math.round(p.judgment);
+      setPurchasePrice(initialBid);
+      syncedBidPrice.current = { id: p.id, price: initialBid };
       setRemodelCost(30000);
       // Once a final sale price has actually been recorded, that's the real
       // number to build the proforma around — otherwise fall back to the ARV
@@ -640,6 +654,37 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   }
 
   const selected = properties.find((p) => p.id === selectedId);
+
+  // Sync Purchase/Bid Price edits into the sheet's AF column, debounced so a
+  // burst of keystrokes lands as one write. Values that came FROM the sheet
+  // (set in selectProperty, tracked in syncedBidPrice) are skipped, so this
+  // only fires on genuine user edits. AF-only write — never marks purchased.
+  useEffect(() => {
+    if (!selected || locked) return;
+    const last = syncedBidPrice.current;
+    if (last && last.id === selected.id && last.price === purchasePrice) return;
+
+    const id = selected.id;
+    const sourceType = selected.sourceType;
+    if (bidSyncTimer.current) clearTimeout(bidSyncTimer.current);
+    bidSyncTimer.current = setTimeout(() => {
+      syncedBidPrice.current = { id, price: purchasePrice };
+      fetch("/api/bid-price", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, dealType: sourceType, price: purchasePrice }),
+      })
+        .then((r) => r.json())
+        .then((result) => {
+          if (result.ok === false) console.error("Bid price sync failed:", result.error);
+        })
+        .catch((err) => console.error("Bid price sync failed:", err.message));
+    }, 1200);
+    return () => {
+      if (bidSyncTimer.current) clearTimeout(bidSyncTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [purchasePrice, selected?.id, locked]);
   const activeConfig = configFor(selected);
 
   const result = useMemo(
@@ -856,7 +901,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
 
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="sectionHeaderRow">
-              <p className="sectionTitle">Sliding Scale</p>
+              <p className="sectionTitle">The Numbers</p>
               <button
                 type="button"
                 className={`purchaseButton small ${locked ? "" : "secondary"}`}
@@ -875,7 +920,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                   prefix="$"
                   disabled={locked}
                   onChange={setPurchasePrice}
-                  hint={`What you bid at auction (defaults to ${activeConfig.judgmentLabel.toLowerCase()})`}
+                  hint={`What you bid at auction — syncs with the sheet's Price Paid column (defaults to ${activeConfig.judgmentLabel.toLowerCase()})`}
                 />
                 <NumberField
                   label="Remodel Cost"

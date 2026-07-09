@@ -199,7 +199,7 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
       // the auction purchase — distinct from purchasePrice (what was paid to
       // acquire it). Once set, the UI uses this instead of the ARV estimate.
       const finalSalePrice = toNum(sheetPurchase?.finalSalePrice);
-      // The locked Sliding Scale snapshot (if any) — lets "Lock Numbers" in
+      // The locked The Numbers snapshot (if any) — lets "Lock Numbers" in
       // the UI survive a refresh instead of resetting to computed defaults.
       let lockedScenario = null;
       if (sheetPurchase?.lockedScenario) {
