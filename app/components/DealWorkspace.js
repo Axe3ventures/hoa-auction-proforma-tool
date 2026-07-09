@@ -46,22 +46,16 @@ function ThemeToggle() {
   );
 }
 
-function Slider({ label, value, min, max, step, format, onChange, hint, disabled }) {
+function ReadOnlyField({ label, value, hint }) {
   return (
-    <div className="sliderRow">
+    <div className="numberFieldRow">
       <label>
         <span>{label}</span>
-        <span className="value">{format(value)}</span>
       </label>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-      />
+      <div className="numberFieldInputWrap disabled">
+        <span className="computedFieldValue">{value}</span>
+        <span className="numberFieldAffix">computed</span>
+      </div>
       {hint && <div className="hint">{hint}</div>}
     </div>
   );
@@ -650,7 +644,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                     }}
                   >
                     <label className="purchaseField">
-                      Final Sale Price <span className="hint">(sets the Sale Price slider below once recorded)</span>
+                      Final Sale Price <span className="hint">(sets the Sale Price field below once recorded)</span>
                       <div className="buyerInputRow">
                         <input
                           type="number"
@@ -718,7 +712,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
             <div className="bigNumber">{fmtUSD(Math.max(maxBid, 0))}</div>
             <div className="hint">
               The most you can bid at auction and still clear {fmtUSD(activeConfig.targetProfit)} in profit, given the
-              Remodel Cost, Sale Price, and Seller Closing Cost sliders below (goal: sell within {activeConfig.goalDays} days).
+              Remodel Cost, Sale Price, and Seller Closing Cost figures below (goal: sell within {activeConfig.goalDays} days).
             </div>
             <div className={`bidRoom ${bidRoomClass}`}>
               {bidRoom >= 0
@@ -759,23 +753,19 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                   onChange={setPurchasePrice}
                   hint={`What you bid at auction (defaults to ${activeConfig.judgmentLabel.toLowerCase()})`}
                 />
-                <Slider
+                <NumberField
                   label="Remodel Cost"
                   value={remodelCost}
-                  min={0}
-                  max={200000}
                   step={500}
-                  format={fmtUSD}
+                  prefix="$"
                   disabled={locked}
                   onChange={setRemodelCost}
                 />
-                <Slider
+                <NumberField
                   label="Sale Price (ARV)"
                   value={salePrice}
-                  min={0}
-                  max={arv ? Math.round(arv * 1.5) : 1000000}
                   step={1000}
-                  format={fmtUSD}
+                  prefix="$"
                   disabled={locked}
                   onChange={setSalePrice}
                   hint={
@@ -786,34 +776,21 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                 />
               </div>
               <div>
-                <Slider
+                <ReadOnlyField
                   label="Seller Paid Closing Cost"
-                  value={sellerClosingCost}
-                  min={0}
-                  max={selected ? Math.round((selected.mortgageBalance + selected.hudAmount) * 2 + 50000) : 500000}
-                  step={500}
-                  format={fmtUSD}
-                  disabled={locked}
-                  onChange={setSellerClosingCost}
-                  hint="Mortgage + HUD payoff needed to deliver clear title"
+                  value={fmtUSD(sellerClosingCost)}
+                  hint="Computed: Mortgage + HUD payoff needed to deliver clear title"
                 />
-                <Slider
+                <ReadOnlyField
                   label="Investor Split"
-                  value={investorSplitPct}
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  format={fmtPct}
-                  disabled={locked}
-                  onChange={setInvestorSplitPct}
+                  value={fmtPct(investorSplitPct)}
+                  hint="Computed from the standard investor / company profit split"
                 />
-                <Slider
+                <NumberField
                   label="Days to Close"
                   value={cycleDays}
-                  min={30}
-                  max={365}
                   step={5}
-                  format={(v) => `${v} days`}
+                  suffix="days"
                   disabled={locked}
                   onChange={setCycleDays}
                   hint={`Goal for ${activeConfig.title}: ${activeConfig.goalDays} days`}

@@ -337,6 +337,14 @@ body {
 }
 .numberFieldInputWrap input:disabled { color: var(--muted); cursor: not-allowed; }
 .numberFieldInputWrap input:focus { outline: none; }
+.computedFieldValue {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 9px 0;
+}
 
 .sliderRow { margin-bottom: 16px; }
 .sliderRow label {
