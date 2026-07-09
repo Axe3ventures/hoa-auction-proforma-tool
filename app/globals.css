@@ -519,6 +519,28 @@ body {
 }
 .photoDeleteBtn:hover { background: var(--photo-delete-hover-bg); }
 
+.photoMoveBtn {
+  position: absolute;
+  bottom: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--photo-delete-border);
+  background: var(--photo-delete-bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 2px;
+}
+.photoMoveBtn.left { left: 4px; }
+.photoMoveBtn.right { right: 4px; }
+.photoMoveBtn:hover:not(:disabled) { background: var(--photo-delete-hover-bg); }
+.photoMoveBtn:disabled { opacity: 0.3; cursor: default; }
+
 .photoLightbox {
   position: fixed;
   inset: 0;

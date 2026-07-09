@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { uploadPhoto, listPhotos, deletePhoto } from "../../../lib/googleDrive";
+import { uploadPhoto, listPhotos, deletePhoto, reorderPhotos } from "../../../lib/googleDrive";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -35,6 +35,20 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, file: result.file });
   } catch (err) {
     console.error(`POST /api/photos failed for ${dealType}/${id}:`, err.message);
+    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request) {
+  const { fileIds } = await request.json();
+  if (!Array.isArray(fileIds) || fileIds.length === 0) {
+    return NextResponse.json({ ok: false, error: "fileIds array is required" }, { status: 400 });
+  }
+  try {
+    await reorderPhotos(fileIds);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("PATCH /api/photos (reorder) failed:", err.message);
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }
 }

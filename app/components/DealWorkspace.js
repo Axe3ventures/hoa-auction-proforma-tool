@@ -144,7 +144,7 @@ function NotesPanel({ property, noteText, onNoteChange, onSaveNote, savingNote, 
   );
 }
 
-function PhotosPanel({ photos, uploading, onUpload, onDelete }) {
+function PhotosPanel({ photos, uploading, onUpload, onDelete, onReorder, hasProperty }) {
   const [enlargedIndex, setEnlargedIndex] = useState(null);
   const open = enlargedIndex !== null && enlargedIndex >= 0 && enlargedIndex < photos.length;
   const current = open ? photos[enlargedIndex] : null;
@@ -152,6 +152,14 @@ function PhotosPanel({ photos, uploading, onUpload, onDelete }) {
   const closeLightbox = () => setEnlargedIndex(null);
   const goPrev = () => setEnlargedIndex((i) => (i === null ? i : (i - 1 + photos.length) % photos.length));
   const goNext = () => setEnlargedIndex((i) => (i === null ? i : (i + 1) % photos.length));
+
+  const movePhoto = (from, to) => {
+    if (to < 0 || to >= photos.length || from === to) return;
+    const next = photos.slice();
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onReorder(next);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -168,42 +176,79 @@ function PhotosPanel({ photos, uploading, onUpload, onDelete }) {
   return (
     <div className="panel" style={{ marginBottom: 20 }}>
       <p className="sectionTitle">Photos</p>
-      <div className="photoInputsRow">
-        <label className="purchaseButton small photoUploadLabel">
-          Take Photo
-          <input type="file" accept="image/*" capture="environment" onChange={(e) => onUpload(e.target.files)} />
-        </label>
-        <label className="purchaseButton small secondary photoUploadLabel">
-          Choose from Library
-          <input type="file" accept="image/*" multiple onChange={(e) => onUpload(e.target.files)} />
-        </label>
-        {uploading && <span className="hint">Uploading…</span>}
-      </div>
-      {photos.length === 0 ? (
+      {!hasProperty ? (
         <div className="hint" style={{ marginTop: 10 }}>
-          No photos yet — take one from your phone or upload from your library.
+          Select a property from the list to view and add its photos.
         </div>
       ) : (
-        <div className="photoGrid">
-          {photos.map((photo, i) => (
-            <div className="photoThumb" key={photo.id}>
-              <img
-                src={`/api/photos/${photo.id}`}
-                alt={photo.name}
-                loading="lazy"
-                onClick={() => setEnlargedIndex(i)}
-              />
-              <button
-                type="button"
-                className="photoDeleteBtn"
-                onClick={() => onDelete(photo.id)}
-                aria-label="Delete photo"
-              >
-                &times;
-              </button>
+        <>
+          <div className="photoInputsRow">
+            <label className="purchaseButton small photoUploadLabel">
+              Take Photo
+              <input type="file" accept="image/*" capture="environment" onChange={(e) => onUpload(e.target.files)} />
+            </label>
+            <label className="purchaseButton small secondary photoUploadLabel">
+              Choose from Library
+              <input type="file" accept="image/*" multiple onChange={(e) => onUpload(e.target.files)} />
+            </label>
+            {uploading && <span className="hint">Uploading…</span>}
+          </div>
+          {photos.length === 0 ? (
+            <div className="hint" style={{ marginTop: 10 }}>
+              No photos yet — take one from your phone or upload from your library.
             </div>
-          ))}
-        </div>
+          ) : (
+            <>
+              {photos.length > 1 && (
+                <div className="hint" style={{ marginTop: 10 }}>
+                  Tap a photo to enlarge; use the ‹ › buttons to reorder.
+                </div>
+              )}
+              <div className="photoGrid">
+                {photos.map((photo, i) => (
+                  <div className="photoThumb" key={photo.id}>
+                    <img
+                      src={`/api/photos/${photo.id}`}
+                      alt={photo.name}
+                      loading="lazy"
+                      onClick={() => setEnlargedIndex(i)}
+                    />
+                    <button
+                      type="button"
+                      className="photoDeleteBtn"
+                      onClick={() => onDelete(photo.id)}
+                      aria-label="Delete photo"
+                    >
+                      &times;
+                    </button>
+                    {photos.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          className="photoMoveBtn left"
+                          onClick={() => movePhoto(i, i - 1)}
+                          disabled={i === 0}
+                          aria-label="Move photo earlier"
+                        >
+                          &#8249;
+                        </button>
+                        <button
+                          type="button"
+                          className="photoMoveBtn right"
+                          onClick={() => movePhoto(i, i + 1)}
+                          disabled={i === photos.length - 1}
+                          aria-label="Move photo later"
+                        >
+                          &#8250;
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
       )}
       {open && (
         <div className="photoLightbox" onClick={closeLightbox}>
@@ -378,6 +423,27 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     }
     setUploadingPhoto(false);
     refreshPhotos(selected);
+  }
+
+  async function handleReorderPhotos(newOrder) {
+    // Optimistically show the new order, then persist it to Drive. On failure,
+    // reload the server's order so the UI can't drift out of sync.
+    setPhotos(newOrder);
+    try {
+      const res = await fetch("/api/photos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileIds: newOrder.map((p) => p.id) }),
+      });
+      const result = await res.json();
+      if (!res.ok || result.ok === false) {
+        alert(`Couldn't save photo order: ${result.error || "unknown error"}`);
+        if (selected) refreshPhotos(selected);
+      }
+    } catch (err) {
+      alert(`Couldn't save photo order: ${err.message}`);
+      if (selected) refreshPhotos(selected);
+    }
   }
 
   async function handleDeletePhoto(fileId) {
@@ -660,6 +726,15 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
         </div>
 
         <div>
+          <PhotosPanel
+            photos={photos}
+            uploading={uploadingPhoto}
+            onUpload={handleUploadPhoto}
+            onDelete={handleDeletePhoto}
+            onReorder={handleReorderPhotos}
+            hasProperty={!!selected}
+          />
+
           {selected && (
             <div className="panel" style={{ marginBottom: 20 }}>
               <p className="sectionTitle">Base Figures &mdash; {selected.address}</p>
@@ -889,15 +964,6 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
               </div>
             </div>
           </div>
-
-          {selected && (
-            <PhotosPanel
-              photos={photos}
-              uploading={uploadingPhoto}
-              onUpload={handleUploadPhoto}
-              onDelete={handleDeletePhoto}
-            />
-          )}
 
           {selected && (
             <NotesPanel
