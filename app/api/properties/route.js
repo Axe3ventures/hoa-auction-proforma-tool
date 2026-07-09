@@ -188,6 +188,16 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
       // the auction purchase — distinct from purchasePrice (what was paid to
       // acquire it). Once set, the UI uses this instead of the ARV estimate.
       const finalSalePrice = toNum(sheetPurchase?.finalSalePrice);
+      // The locked Sliding Scale snapshot (if any) — lets "Lock Numbers" in
+      // the UI survive a refresh instead of resetting to computed defaults.
+      let lockedScenario = null;
+      if (sheetPurchase?.lockedScenario) {
+        try {
+          lockedScenario = JSON.parse(sheetPurchase.lockedScenario);
+        } catch {
+          lockedScenario = null;
+        }
+      }
       // "self" (blank or "I Purchased" typed in) routes to the Purchased tab
       // and highlights green; any other name typed into Purchased By means
       // someone else won the deal — routes to Purchased by Other and
@@ -204,6 +214,7 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
         purchaser,
         purchasedDate,
         finalSalePrice,
+        lockedScenario,
         // Reminder to follow up on a deal someone else bought — per-deal-type
         // follow-up window (see DEAL_CONFIG[sourceType].followUpDays).
         followUpDate:

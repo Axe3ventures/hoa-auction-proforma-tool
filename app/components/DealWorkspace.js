@@ -223,6 +223,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   const [investorSplitPct, setInvestorSplitPct] = useState(0.5);
   const [cycleDays, setCycleDays] = useState(goalDays || 180);
   const [locked, setLocked] = useState(false);
+  const [savingLock, setSavingLock] = useState(false);
 
   const [purchaseFormPrice, setPurchaseFormPrice] = useState("");
   const [purchaseFormBuyer, setPurchaseFormBuyer] = useState("");
@@ -272,15 +273,29 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     setSelectedId(p.id);
     const cfg = configFor(p);
     const arv = Math.round((p.redfin + p.zillow + p.caliber) / 3) || p.zillow || p.redfin || p.caliber || 0;
-    setPurchasePrice(Math.round(p.judgment));
-    setRemodelCost(30000);
-    // Once a final sale price has actually been recorded, that's the real
-    // number to build the proforma around — otherwise fall back to the ARV
-    // estimate (average of Redfin/Zillow/Caliber).
-    setSalePrice(p.finalSalePrice > 0 ? p.finalSalePrice : arv);
-    setSellerClosingCost(Math.round(p.mortgageBalance + p.hudAmount));
-    setCycleDays(cfg.goalDays || 180);
-    setLocked(false);
+    if (p.lockedScenario) {
+      // A previously locked scenario persists across refreshes/relaunches —
+      // restore those exact numbers instead of recomputing fresh defaults.
+      const s = p.lockedScenario;
+      setPurchasePrice(s.purchasePrice ?? Math.round(p.judgment));
+      setRemodelCost(s.remodelCost ?? 30000);
+      setSalePrice(s.salePrice ?? arv);
+      setSellerClosingCost(s.sellerClosingCost ?? Math.round(p.mortgageBalance + p.hudAmount));
+      setInvestorSplitPct(s.investorSplitPct ?? 0.5);
+      setCycleDays(s.cycleDays ?? cfg.goalDays ?? 180);
+      setLocked(true);
+    } else {
+      setPurchasePrice(Math.round(p.judgment));
+      setRemodelCost(30000);
+      // Once a final sale price has actually been recorded, that's the real
+      // number to build the proforma around — otherwise fall back to the ARV
+      // estimate (average of Redfin/Zillow/Caliber).
+      setSalePrice(p.finalSalePrice > 0 ? p.finalSalePrice : arv);
+      setSellerClosingCost(Math.round(p.mortgageBalance + p.hudAmount));
+      setInvestorSplitPct(0.5);
+      setCycleDays(cfg.goalDays || 180);
+      setLocked(false);
+    }
     setPurchaseFormPrice("");
     setPurchaseFormBuyer("");
     setFinalSaleFormPrice(p.finalSalePrice > 0 ? String(p.finalSalePrice) : "");
@@ -465,6 +480,54 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     // real number instead of waiting on a refetch + reselect round trip.
     setSalePrice(finalSalePrice);
     refreshProperties(true);
+  }
+
+  async function handleToggleLock() {
+    const selectedNow = properties.find((p) => p.id === selectedId);
+    if (!selectedNow) return;
+    setSavingLock(true);
+    try {
+      if (locked) {
+        const res = await fetch(
+          `/api/locked-scenario?id=${encodeURIComponent(selectedNow.id)}&dealType=${encodeURIComponent(selectedNow.sourceType)}`,
+          { method: "DELETE" }
+        );
+        const result = await res.json();
+        if (!res.ok || result.ok === false) {
+          alert(`Couldn't unlock: ${result.error || "unknown error"}`);
+          setSavingLock(false);
+          return;
+        }
+        setLocked(false);
+      } else {
+        const scenario = {
+          purchasePrice,
+          remodelCost,
+          salePrice,
+          sellerClosingCost,
+          investorSplitPct,
+          cycleDays,
+        };
+        const res = await fetch("/api/locked-scenario", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: selectedNow.id, dealType: selectedNow.sourceType, scenario }),
+        });
+        const result = await res.json();
+        if (!res.ok || result.ok === false) {
+          alert(`Couldn't lock numbers: ${result.error || "unknown error"}`);
+          setSavingLock(false);
+          return;
+        }
+        setLocked(true);
+      }
+    } catch (err) {
+      alert(`Couldn't ${locked ? "unlock" : "lock numbers"}: ${err.message}`);
+      setSavingLock(false);
+      return;
+    }
+    setSavingLock(false);
+    refreshProperties(false);
   }
 
   const selected = properties.find((p) => p.id === selectedId);
@@ -679,9 +742,10 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
               <button
                 type="button"
                 className={`purchaseButton small ${locked ? "" : "secondary"}`}
-                onClick={() => setLocked(!locked)}
+                onClick={handleToggleLock}
+                disabled={savingLock}
               >
-                {locked ? "🔒 Unlock to Edit" : "🔓 Lock Numbers"}
+                {savingLock ? "Saving…" : locked ? "🔒 Unlock to Edit" : "🔓 Lock Numbers"}
               </button>
             </div>
             <div className="grid2">
