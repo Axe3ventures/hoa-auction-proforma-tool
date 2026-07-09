@@ -22,6 +22,17 @@ const DEAL_TYPES = {
 
 const AUCTION_WINDOW_MONTHS = 3;
 
+// Auction Date cells are sometimes formatted as a full date-time in the sheet
+// (e.g. "6/24/2026 10:00:00 AM"); the app only ever shows the date, so drop a
+// trailing time component. An already date-only value ("6/24/26") is returned
+// untouched.
+function dateOnly(v) {
+  if (v === null || v === undefined) return "";
+  return String(v)
+    .replace(/[\s,]+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AaPp][Mm])?\s*$/, "")
+    .trim();
+}
+
 function toNum(v) {
   if (v === null || v === undefined || v === "") return 0;
   const s = String(v).trim();
@@ -238,7 +249,7 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
         zillow: toNum(field(r, "Zillow_Value")),
         caliber: toNum(field(r, "Caliber_Value")),
         plaintiff: field(r, "Plaintiff_HOA") || "",
-        auctionDate: field(r, "Auction_Date") || "",
+        auctionDate: dateOnly(field(r, "Auction_Date")),
         owner: r.Owner || "",
         caseNumber: field(r, "Case_Number") || "",
         loanNotes: field(r, "Marc_Notes") || "",
