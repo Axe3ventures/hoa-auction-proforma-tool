@@ -825,10 +825,14 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
                 />
               </div>
               <div>
-                <ReadOnlyField
+                <NumberField
                   label="Seller Paid Closing Cost"
-                  value={fmtUSD(sellerClosingCost)}
-                  hint="Computed: Mortgage + HUD payoff needed to deliver clear title"
+                  value={sellerClosingCost}
+                  step={500}
+                  prefix="$"
+                  disabled={locked}
+                  onChange={setSellerClosingCost}
+                  hint="Defaults to Mortgage + HUD payoff needed to deliver clear title — edit to override"
                 />
                 <ReadOnlyField
                   label="Investor Split"
