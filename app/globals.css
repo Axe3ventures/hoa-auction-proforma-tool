@@ -447,7 +447,7 @@ body {
 }
 
 .bigNumber {
-  font-size: 48px;
+  font-size: 24px;
   font-weight: 800;
   color: var(--accent-text);
   line-height: 1.1;
@@ -540,20 +540,65 @@ body {
 .photoLightboxClose {
   position: absolute;
   top: 16px;
-  right: 20px;
-  width: 36px;
-  height: 36px;
+  right: 16px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.45);
   color: #ffffff;
-  font-size: 20px;
+  font-size: 28px;
+  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 2;
 }
 .photoLightboxClose:hover { background: rgba(255, 255, 255, 0.25); }
+
+.photoLightboxNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  font-size: 34px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  padding-bottom: 4px;
+}
+.photoLightboxNav:hover { background: rgba(255, 255, 255, 0.25); }
+.photoLightboxNav.prev { left: 12px; }
+.photoLightboxNav.next { right: 12px; }
+
+.photoLightboxCount {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 4px 12px;
+  border-radius: 999px;
+  z-index: 2;
+}
+
+@media (max-width: 768px) {
+  .photoLightboxNav { width: 44px; height: 44px; font-size: 28px; }
+  .photoLightboxNav.prev { left: 6px; }
+  .photoLightboxNav.next { right: 6px; }
+}
 
 /* Mobile — this app is meant to be usable standing at a house on a phone,
    taking drive-by photos, not just at a desk. */
@@ -564,7 +609,7 @@ body {
   .resultsGrid { grid-template-columns: repeat(2, 1fr); }
   .propList { max-height: 280px; }
   .header { flex-wrap: wrap; gap: 8px; }
-  .bigNumber { font-size: 36px; }
+  .bigNumber { font-size: 18px; }
   .navTabs { overflow-x: auto; flex-wrap: nowrap; }
   .navTab { white-space: nowrap; }
 }

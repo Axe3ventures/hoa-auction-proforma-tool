@@ -145,7 +145,25 @@ function NotesPanel({ property, noteText, onNoteChange, onSaveNote, savingNote, 
 }
 
 function PhotosPanel({ photos, uploading, onUpload, onDelete }) {
-  const [enlarged, setEnlarged] = useState(null);
+  const [enlargedIndex, setEnlargedIndex] = useState(null);
+  const open = enlargedIndex !== null && enlargedIndex >= 0 && enlargedIndex < photos.length;
+  const current = open ? photos[enlargedIndex] : null;
+
+  const closeLightbox = () => setEnlargedIndex(null);
+  const goPrev = () => setEnlargedIndex((i) => (i === null ? i : (i - 1 + photos.length) % photos.length));
+  const goNext = () => setEnlargedIndex((i) => (i === null ? i : (i + 1) % photos.length));
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e) {
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowLeft") goPrev();
+      else if (e.key === "ArrowRight") goNext();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, photos.length]);
 
   return (
     <div className="panel" style={{ marginBottom: 20 }}>
@@ -167,13 +185,13 @@ function PhotosPanel({ photos, uploading, onUpload, onDelete }) {
         </div>
       ) : (
         <div className="photoGrid">
-          {photos.map((photo) => (
+          {photos.map((photo, i) => (
             <div className="photoThumb" key={photo.id}>
               <img
                 src={`/api/photos/${photo.id}`}
                 alt={photo.name}
                 loading="lazy"
-                onClick={() => setEnlarged(photo)}
+                onClick={() => setEnlargedIndex(i)}
               />
               <button
                 type="button"
@@ -187,17 +205,48 @@ function PhotosPanel({ photos, uploading, onUpload, onDelete }) {
           ))}
         </div>
       )}
-      {enlarged && (
-        <div className="photoLightbox" onClick={() => setEnlarged(null)}>
-          <img src={`/api/photos/${enlarged.id}`} alt={enlarged.name} onClick={(e) => e.stopPropagation()} />
+      {open && (
+        <div className="photoLightbox" onClick={closeLightbox}>
           <button
             type="button"
             className="photoLightboxClose"
-            onClick={() => setEnlarged(null)}
+            onClick={closeLightbox}
             aria-label="Close"
           >
             &times;
           </button>
+          {photos.length > 1 && (
+            <button
+              type="button"
+              className="photoLightboxNav prev"
+              onClick={(e) => {
+                e.stopPropagation();
+                goPrev();
+              }}
+              aria-label="Previous photo"
+            >
+              &#8249;
+            </button>
+          )}
+          <img src={`/api/photos/${current.id}`} alt={current.name} onClick={(e) => e.stopPropagation()} />
+          {photos.length > 1 && (
+            <button
+              type="button"
+              className="photoLightboxNav next"
+              onClick={(e) => {
+                e.stopPropagation();
+                goNext();
+              }}
+              aria-label="Next photo"
+            >
+              &#8250;
+            </button>
+          )}
+          {photos.length > 1 && (
+            <div className="photoLightboxCount">
+              {enlargedIndex + 1} / {photos.length}
+            </div>
+          )}
         </div>
       )}
     </div>
