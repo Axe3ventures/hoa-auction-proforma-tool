@@ -201,51 +201,74 @@ function PhotosPanel({ photos, uploading, onUpload, onDelete, onReorder, hasProp
             <>
               {photos.length > 1 && (
                 <div className="hint" style={{ marginTop: 10 }}>
-                  Tap a photo to enlarge; use the ‹ › buttons to reorder.
+                  The big photo is the primary — tap ★ on any photo to make it primary, ‹ › to reorder, tap to
+                  enlarge.
                 </div>
               )}
-              <div className="photoGrid">
-                {photos.map((photo, i) => (
-                  <div className="photoThumb" key={photo.id}>
-                    <img
-                      src={`/api/photos/${photo.id}`}
-                      alt={photo.name}
-                      loading="lazy"
-                      onClick={() => setEnlargedIndex(i)}
-                    />
-                    <button
-                      type="button"
-                      className="photoDeleteBtn"
-                      onClick={() => onDelete(photo.id)}
-                      aria-label="Delete photo"
-                    >
-                      &times;
-                    </button>
-                    {photos.length > 1 && (
-                      <>
-                        <button
-                          type="button"
-                          className="photoMoveBtn left"
-                          onClick={() => movePhoto(i, i - 1)}
-                          disabled={i === 0}
-                          aria-label="Move photo earlier"
-                        >
-                          &#8249;
-                        </button>
-                        <button
-                          type="button"
-                          className="photoMoveBtn right"
-                          onClick={() => movePhoto(i, i + 1)}
-                          disabled={i === photos.length - 1}
-                          aria-label="Move photo later"
-                        >
-                          &#8250;
-                        </button>
-                      </>
-                    )}
-                  </div>
-                ))}
+              <div className="photoHero">
+                <img
+                  src={`/api/photos/${photos[0].id}`}
+                  alt={photos[0].name}
+                  onClick={() => setEnlargedIndex(0)}
+                />
+                <span className="photoHeroBadge">★ Primary</span>
+                <button
+                  type="button"
+                  className="photoDeleteBtn"
+                  onClick={() => onDelete(photos[0].id)}
+                  aria-label="Delete photo"
+                >
+                  &times;
+                </button>
               </div>
+              {photos.length > 1 && (
+                <div className="photoGrid">
+                  {photos.slice(1).map((photo, i) => (
+                    <div className="photoThumb" key={photo.id}>
+                      <img
+                        src={`/api/photos/${photo.id}`}
+                        alt={photo.name}
+                        loading="lazy"
+                        onClick={() => setEnlargedIndex(i + 1)}
+                      />
+                      <button
+                        type="button"
+                        className="photoDeleteBtn"
+                        onClick={() => onDelete(photo.id)}
+                        aria-label="Delete photo"
+                      >
+                        &times;
+                      </button>
+                      <button
+                        type="button"
+                        className="photoStarBtn"
+                        onClick={() => movePhoto(i + 1, 0)}
+                        aria-label="Make primary photo"
+                        title="Make primary"
+                      >
+                        &#9733;
+                      </button>
+                      <button
+                        type="button"
+                        className="photoMoveBtn left"
+                        onClick={() => movePhoto(i + 1, i)}
+                        aria-label="Move photo earlier"
+                      >
+                        &#8249;
+                      </button>
+                      <button
+                        type="button"
+                        className="photoMoveBtn right"
+                        onClick={() => movePhoto(i + 1, i + 2)}
+                        disabled={i + 1 === photos.length - 1}
+                        aria-label="Move photo later"
+                      >
+                        &#8250;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </>
