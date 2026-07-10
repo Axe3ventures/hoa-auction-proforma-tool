@@ -312,6 +312,8 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   const [cycleDays, setCycleDays] = useState(goalDays || 180);
   const [locked, setLocked] = useState(false);
   const [savingLock, setSavingLock] = useState(false);
+  const [researched, setResearched] = useState(false);
+  const [savingResearched, setSavingResearched] = useState(false);
 
   const [purchaseFormPrice, setPurchaseFormPrice] = useState("");
   const [purchaseFormBuyer, setPurchaseFormBuyer] = useState("");
@@ -398,6 +400,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       setCycleDays(cfg.goalDays || 180);
       setLocked(false);
     }
+    setResearched(!!p.fullyResearched);
     setPurchaseFormPrice("");
     setPurchaseFormBuyer("");
     setFinalSaleFormPrice(p.finalSalePrice > 0 ? String(p.finalSalePrice) : "");
@@ -605,6 +608,34 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     refreshProperties(true);
   }
 
+  async function handleToggleResearched() {
+    const selectedNow = properties.find((p) => p.id === selectedId);
+    if (!selectedNow) return;
+    const next = !researched;
+    setSavingResearched(true);
+    try {
+      const res = await fetch("/api/researched", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selectedNow.id, dealType: selectedNow.sourceType, researched: next }),
+      });
+      const result = await res.json();
+      if (!res.ok || result.ok === false) {
+        alert(`Couldn't save research status: ${result.error || "unknown error"}`);
+        setSavingResearched(false);
+        return;
+      }
+    } catch (err) {
+      alert(`Couldn't save research status: ${err.message}`);
+      setSavingResearched(false);
+      return;
+    }
+    setResearched(next);
+    setSavingResearched(false);
+    // Update the list immediately so the 👍 badge appears without re-selecting.
+    setProperties((prev) => prev.map((p) => (p.id === selectedNow.id ? { ...p, fullyResearched: next } : p)));
+  }
+
   async function handleToggleLock() {
     const selectedNow = properties.find((p) => p.id === selectedId);
     if (!selectedNow) return;
@@ -757,6 +788,11 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
               >
                 <div className="addr">
                   {p.address || `Property ${p.id}`}
+                  {p.fullyResearched && (
+                    <span className="researchedBadge" title="Fully researched">
+                      👍
+                    </span>
+                  )}
                   {p.auctionDate && <span className="auctionDateBadge">{p.auctionDate}</span>}
                   {isPurchasedTab(dealType) && (
                     <span className="sourceBadge">{DEAL_CONFIG[p.sourceType]?.title || p.sourceType}</span>
@@ -902,14 +938,24 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="sectionHeaderRow">
               <p className="sectionTitle">The Numbers</p>
-              <button
-                type="button"
-                className={`purchaseButton small ${locked ? "" : "secondary"}`}
-                onClick={handleToggleLock}
-                disabled={savingLock}
-              >
-                {savingLock ? "Saving…" : locked ? "🔒 Unlock to Edit" : "🔓 Lock Numbers"}
-              </button>
+              <div className="sectionHeaderButtons">
+                <button
+                  type="button"
+                  className={`purchaseButton small ${researched ? "" : "secondary"}`}
+                  onClick={handleToggleResearched}
+                  disabled={savingResearched || !selected}
+                >
+                  {savingResearched ? "Saving…" : researched ? "👍 Fully Researched" : "Fully Researched"}
+                </button>
+                <button
+                  type="button"
+                  className={`purchaseButton small ${locked ? "" : "secondary"}`}
+                  onClick={handleToggleLock}
+                  disabled={savingLock}
+                >
+                  {savingLock ? "Saving…" : locked ? "🔒 Unlock to Edit" : "🔓 Lock Numbers"}
+                </button>
+              </div>
             </div>
             <div className="grid2">
               <div>

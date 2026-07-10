@@ -307,6 +307,9 @@ body {
   margin-bottom: 10px;
 }
 .sectionHeaderRow .sectionTitle { margin: 0; }
+.sectionHeaderButtons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+.researchedBadge { margin-left: 6px; font-size: 13px; }
 
 .numberFieldRow { margin-bottom: 16px; }
 .numberFieldRow label {

@@ -226,6 +226,9 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
         purchasedDate,
         finalSalePrice,
         lockedScenario,
+        // "TRUE" in column AK once Fully Researched was pressed — shows the
+        // 👍 badge on the property list.
+        fullyResearched: (sheetPurchase?.researched || "").toString().trim() !== "",
         // Reminder to follow up on a deal someone else bought — per-deal-type
         // follow-up window (see DEAL_CONFIG[sourceType].followUpDays).
         followUpDate:
