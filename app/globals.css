@@ -186,6 +186,17 @@ body {
 }
 .propItem:hover { background: var(--hover-bg); }
 .propItem.active { background: var(--accent-bg); border-color: var(--accent); }
+/* Manual status tints on the property line (Contact = pink, Flyer = yellow). */
+.propItem.contact { background: #fbe6f3; border-left: 4px solid #d972c0; }
+.propItem.flyer { background: #fff6d6; border-left: 4px solid #e6b800; }
+.propItem.contact.active { background: #f7d3ea; border-color: #d972c0; }
+.propItem.flyer.active { background: #ffefb0; border-color: #e6b800; }
+:root[data-theme="dark"] .propItem.contact { background: #3a1330; border-left-color: #d972c0; }
+:root[data-theme="dark"] .propItem.flyer { background: #38300a; border-left-color: #e6b800; }
+.addressContact { color: #c026a3; }
+:root[data-theme="dark"] .addressContact { color: #ef9fde; }
+.statusContactActive { background: #d972c0 !important; border-color: #d972c0 !important; color: #ffffff !important; }
+.statusFlyerActive { background: #e6b800 !important; border-color: #e6b800 !important; color: #1b222c !important; }
 .propItem .addr { font-weight: 600; font-size: 13px; }
 .propItem .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
@@ -247,6 +258,14 @@ body {
 }
 .purchaseButton.secondary:hover { background: var(--hover-bg); }
 .purchaseButton.small { padding: 8px 12px; }
+.purchaseButton.danger {
+  background: var(--red);
+  border-color: var(--red);
+  color: #ffffff;
+}
+.purchaseButton.danger:hover { opacity: 0.9; background: var(--red); }
+
+.cancelRow { display: flex; justify-content: flex-end; margin-bottom: 12px; }
 
 .buyerInputRow {
   display: flex;

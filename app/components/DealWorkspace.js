@@ -83,7 +83,7 @@ function NumberField({ label, value, step, prefix, suffix, disabled, onChange, h
   );
 }
 
-function NotesPanel({ property, noteText, onNoteChange, onSaveNote, savingNote, onClearNotes }) {
+function NotesPanel({ property, noteText, onNoteChange, onSaveNote, savingNote, onClearNotes, onToggleStatus }) {
   const notes = [
     { label: "Condition / Drive-By Notes", text: property.driveByNotes, clearable: true },
     { label: "Deal Notes", text: property.dealNotes },
@@ -93,7 +93,25 @@ function NotesPanel({ property, noteText, onNoteChange, onSaveNote, savingNote, 
 
   return (
     <div className="panel" style={{ marginBottom: 20 }}>
-      <p className="sectionTitle">Manual Notes</p>
+      <div className="sectionHeaderRow">
+        <p className="sectionTitle">Manual Notes</p>
+        <div className="sectionHeaderButtons">
+          <button
+            type="button"
+            className={`purchaseButton small ${property.rowColor === "magenta" ? "statusContactActive" : "secondary"}`}
+            onClick={() => onToggleStatus("magenta")}
+          >
+            Contact
+          </button>
+          <button
+            type="button"
+            className={`purchaseButton small ${property.rowColor === "yellow" ? "statusFlyerActive" : "secondary"}`}
+            onClick={() => onToggleStatus("yellow")}
+          >
+            Flyer
+          </button>
+        </div>
+      </div>
       <div className="factRow">
         <span>Owner</span>
         <span className="val">{property.owner || "—"}</span>
@@ -631,6 +649,50 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     refreshProperties(true);
   }
 
+  async function writeRowColor(id, sourceType, color) {
+    const res = await fetch("/api/row-color", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, dealType: sourceType, color }),
+    });
+    const result = await res.json();
+    if (!res.ok || result.ok === false) throw new Error(result.error || "unknown error");
+  }
+
+  async function handleCancelProperty() {
+    const p = properties.find((x) => x.id === selectedId);
+    if (!p) return;
+    if (!confirm(`Mark "${p.address || `Property ${p.id}`}" canceled? It turns red on the sheet and drops off the app.`)) {
+      return;
+    }
+    try {
+      await writeRowColor(p.id, p.sourceType, "red");
+    } catch (err) {
+      alert(`Couldn't cancel this property: ${err.message}`);
+      return;
+    }
+    // Drop it from the list immediately and move to the next one.
+    const remaining = properties.filter((x) => x.id !== p.id);
+    setProperties(remaining);
+    if (remaining.length) selectProperty(remaining[0]);
+    else setSelectedId(null);
+  }
+
+  // Contact (magenta) and Flyer (yellow) are toggles that tint the row without
+  // removing it — press again to clear back to no color.
+  async function handleToggleStatus(color) {
+    const p = properties.find((x) => x.id === selectedId);
+    if (!p) return;
+    const target = p.rowColor === color ? "none" : color;
+    try {
+      await writeRowColor(p.id, p.sourceType, target);
+    } catch (err) {
+      alert(`Couldn't update status: ${err.message}`);
+      return;
+    }
+    setProperties((prev) => prev.map((x) => (x.id === p.id ? { ...x, rowColor: target } : x)));
+  }
+
   async function handleToggleResearched() {
     const selectedNow = properties.find((p) => p.id === selectedId);
     if (!selectedNow) return;
@@ -806,7 +868,9 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
             {filtered.map((p) => (
               <div
                 key={p.id}
-                className={`propItem ${p.id === selectedId ? "active" : ""}`}
+                className={`propItem ${p.id === selectedId ? "active" : ""} ${
+                  p.rowColor === "magenta" ? "contact" : p.rowColor === "yellow" ? "flyer" : ""
+                }`}
                 onClick={() => selectProperty(p)}
               >
                 <div className="addr">
@@ -830,6 +894,13 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
         </div>
 
         <div>
+          {selected && !isPurchasedTab(dealType) && (
+            <div className="cancelRow">
+              <button type="button" className="purchaseButton small danger" onClick={handleCancelProperty}>
+                🚫 Canceled
+              </button>
+            </div>
+          )}
           <PhotosPanel
             photos={photos}
             uploading={uploadingPhoto}
@@ -841,7 +912,12 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
 
           {selected && (
             <div className="panel" style={{ marginBottom: 20 }}>
-              <p className="sectionTitle">Base Figures &mdash; {selected.address}</p>
+              <p className="sectionTitle">
+                Base Figures &mdash;{" "}
+                <span className={selected.rowColor === "magenta" ? "addressContact" : undefined}>
+                  {selected.address}
+                </span>
+              </p>
               <div className="grid2">
                 <div>
                   <div className="factRow"><span>{activeConfig.judgmentLabel}</span><span className="val">{fmtUSD(selected.judgment)}</span></div>
@@ -1087,6 +1163,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
               onSaveNote={handleSaveNote}
               savingNote={savingNote}
               onClearNotes={handleClearNotes}
+              onToggleStatus={handleToggleStatus}
             />
           )}
         </div>
