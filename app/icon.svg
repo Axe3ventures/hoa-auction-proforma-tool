@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#2b5fd9"/>
-  <text x="32" y="43" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="800" fill="#ffffff">Pro</text>
+  <rect width="64" height="64" rx="14" fill="#000000"/>
+  <!-- house silhouette -->
+  <path d="M32 8 L58 31 L50 31 L50 55 L14 55 L14 31 L6 31 Z" fill="#ffffff"/>
+  <text x="32" y="50" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800" fill="#000000">P</text>
 </svg>
