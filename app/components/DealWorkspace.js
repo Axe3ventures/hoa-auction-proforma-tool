@@ -13,6 +13,39 @@ const fmtUSD = (n) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtPct = (n) => `${(n * 100).toFixed(1)}%`;
 
+// Downscale + re-encode a captured photo to JPEG in the browser before upload.
+// Full-res iPhone photos are several MB and blow past the serverless request
+// body limit (which surfaces as a cryptic "string did not match the expected
+// pattern" JSON error); shrinking to ~1600px keeps them a few hundred KB,
+// converts HEIC to JPEG along the way, and makes uploads fast. Falls back to
+// the original file if anything about the resize fails.
+async function downscaleImage(file, maxDim = 1600, quality = 0.82) {
+  if (!file || !file.type || !file.type.startsWith("image/")) return file;
+  try {
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch {
+      bitmap = await createImageBitmap(file); // older engines ignore the option
+    }
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    if (bitmap.close) bitmap.close();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+    if (!blob || blob.size >= file.size) return file; // keep original if no smaller
+    const baseName = (file.name || "photo").replace(/\.[^.]+$/, "");
+    return new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(false);
 
@@ -463,7 +496,8 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   async function handleUploadPhoto(fileList) {
     if (!selected || !fileList || fileList.length === 0) return;
     setUploadingPhoto(true);
-    for (const file of Array.from(fileList)) {
+    for (const original of Array.from(fileList)) {
+      const file = await downscaleImage(original);
       const formData = new FormData();
       formData.append("id", selected.id);
       formData.append("dealType", selected.sourceType);
@@ -471,7 +505,15 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       formData.append("file", file);
       try {
         const res = await fetch("/api/photos", { method: "POST", body: formData });
-        const result = await res.json();
+        // A non-JSON body (e.g. a platform 413 "payload too large" page) makes
+        // res.json() throw Safari's "string did not match the expected
+        // pattern" — read text and surface a clear message instead.
+        let result;
+        try {
+          result = await res.json();
+        } catch {
+          result = { ok: false, error: res.status === 413 ? "photo too large for upload" : `server error ${res.status}` };
+        }
         if (!res.ok || result.ok === false) {
           alert(`Couldn't upload photo: ${result.error || "unknown error"}`);
         }
