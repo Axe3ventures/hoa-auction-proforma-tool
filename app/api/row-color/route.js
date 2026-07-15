@@ -9,7 +9,7 @@ import { setRowColor, resolveSheetNameForDeal } from "../../../lib/googleSheets"
 const ALLOWED = new Set(["red", "orange", "green", "magenta", "yellow", "none"]);
 
 export async function POST(request) {
-  const { id, dealType, color } = await request.json();
+  const { id, dealType, color, sheetRow } = await request.json();
   if (!id || !dealType || !ALLOWED.has(color)) {
     return NextResponse.json(
       { ok: false, error: "id, dealType, and a valid color are required" },
@@ -18,7 +18,7 @@ export async function POST(request) {
   }
   try {
     const sheetName = await resolveSheetNameForDeal(dealType);
-    const wrote = await setRowColor(sheetName, String(id), color);
+    const wrote = await setRowColor(sheetName, String(id), color, sheetRow);
     if (!wrote) {
       return NextResponse.json(
         { ok: false, error: "Could not write to Google Sheets — check Editor access and that the row still exists." },

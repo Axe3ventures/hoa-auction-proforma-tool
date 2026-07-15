@@ -223,6 +223,10 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
       const saleClass = classifySale(purchasePrice, purchaser, rowColor);
       return {
         id: String(r.ID),
+        // 1-indexed sheet row this property came from (header is row 1). The
+        // sheet contains duplicate IDs, so writes pass this back as the exact
+        // target — matching by ID alone can hit the wrong (older) occurrence.
+        sheetRow: i + 2,
         sourceType,
         rowColor,
         purchased: saleClass === "self",

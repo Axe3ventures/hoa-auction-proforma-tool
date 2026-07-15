@@ -5,13 +5,13 @@ import { writeResearched, resolveSheetNameForDeal } from "../../../lib/googleShe
 // 👍 badge on the property list. Persisted in the sheet so it survives
 // refreshes and shows on every device.
 export async function POST(request) {
-  const { id, dealType, researched } = await request.json();
+  const { id, dealType, researched, sheetRow } = await request.json();
   if (!id || !dealType || researched === undefined) {
     return NextResponse.json({ ok: false, error: "id, dealType, and researched are required" }, { status: 400 });
   }
   try {
     const sheetName = await resolveSheetNameForDeal(dealType);
-    const wrote = await writeResearched(sheetName, String(id), !!researched);
+    const wrote = await writeResearched(sheetName, String(id), !!researched, sheetRow);
     if (!wrote) {
       return NextResponse.json(
         { ok: false, error: "Could not write to Google Sheets — check Editor access and that the row still exists." },

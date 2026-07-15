@@ -9,6 +9,11 @@ import NavTabs from "./NavTabs";
 const fmtDate = (s) => (s ? new Date(s).toLocaleDateString("en-US") : "—");
 const isPurchasedTab = (dealType) => dealType === "purchased" || dealType === "purchased-other";
 
+// The sheet contains duplicate IDs, so a property's unique identity in the app
+// is its source tab + sheet row — selecting or updating by bare ID can hit the
+// wrong duplicate.
+const uidOf = (p) => `${p.sourceType}:${p.sheetRow ?? p.id}`;
+
 const fmtUSD = (n) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtPct = (n) => `${(n * 100).toFixed(1)}%`;
@@ -427,7 +432,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       .then((data) => {
         setProperties(data.properties);
         setSource(data.source);
-        if (selectFirstIfMissing && !data.properties.some((p) => p.id === selectedId)) {
+        if (selectFirstIfMissing && !data.properties.some((p) => uidOf(p) === selectedId)) {
           if (data.properties.length) selectProperty(data.properties[0]);
           else setSelectedId(null);
         }
@@ -441,7 +446,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   }, [dealType]);
 
   function selectProperty(p) {
-    setSelectedId(p.id);
+    setSelectedId(uidOf(p));
     const cfg = configFor(p);
     const arv = Math.round((p.redfin + p.zillow + p.caliber) / 3) || p.zillow || p.redfin || p.caliber || 0;
     // A price already in the sheet's AF column (typed there manually, or
@@ -453,7 +458,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       const s = p.lockedScenario;
       const initialBid = s.purchasePrice ?? (sheetBid || Math.round(p.judgment));
       setPurchasePrice(initialBid);
-      syncedBidPrice.current = { id: p.id, price: initialBid };
+      syncedBidPrice.current = { uid: uidOf(p), price: initialBid };
       setRemodelCost(s.remodelCost ?? 30000);
       setSalePrice(s.salePrice ?? arv);
       setSellerClosingCost(s.sellerClosingCost ?? Math.round(p.mortgageBalance + p.hudAmount));
@@ -463,7 +468,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     } else {
       const initialBid = sheetBid || Math.round(p.judgment);
       setPurchasePrice(initialBid);
-      syncedBidPrice.current = { id: p.id, price: initialBid };
+      syncedBidPrice.current = { uid: uidOf(p), price: initialBid };
       setRemodelCost(30000);
       // Once a final sale price has actually been recorded, that's the real
       // number to build the proforma around — otherwise fall back to the ARV
@@ -569,7 +574,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       const res = await fetch("/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selected.id, dealType: selected.sourceType, note: noteText }),
+        body: JSON.stringify({ id: selected.id, dealType: selected.sourceType, note: noteText, sheetRow: selected.sheetRow }),
       });
       const result = await res.json();
       if (!res.ok || result.ok === false) {
@@ -592,7 +597,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     if (!confirm("Delete all Drive-By Notes for this property? This can't be undone.")) return;
     try {
       const res = await fetch(
-        `/api/notes?id=${encodeURIComponent(selected.id)}&dealType=${encodeURIComponent(selected.sourceType)}`,
+        `/api/notes?id=${encodeURIComponent(selected.id)}&dealType=${encodeURIComponent(selected.sourceType)}&sheetRow=${selected.sheetRow || ""}`,
         { method: "DELETE" }
       );
       const result = await res.json();
@@ -627,7 +632,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       const res = await fetch("/api/purchased", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: p.id, dealType: p.sourceType, price, purchaser: purchaseFormBuyer.trim() }),
+        body: JSON.stringify({ id: p.id, dealType: p.sourceType, price, purchaser: purchaseFormBuyer.trim(), sheetRow: p.sheetRow }),
       });
       result = await res.json();
       if (!res.ok || result.ok === false) {
@@ -648,7 +653,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     let result;
     try {
       const res = await fetch(
-        `/api/purchased?id=${encodeURIComponent(p.id)}&dealType=${encodeURIComponent(p.sourceType)}`,
+        `/api/purchased?id=${encodeURIComponent(p.id)}&dealType=${encodeURIComponent(p.sourceType)}&sheetRow=${p.sheetRow || ""}`,
         { method: "DELETE" }
       );
       result = await res.json();
@@ -674,7 +679,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       const res = await fetch("/api/final-sale-price", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: p.id, dealType: p.sourceType, finalSalePrice }),
+        body: JSON.stringify({ id: p.id, dealType: p.sourceType, finalSalePrice, sheetRow: p.sheetRow }),
       });
       const result = await res.json();
       if (!res.ok || result.ok === false) {
@@ -691,30 +696,30 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     refreshProperties(true);
   }
 
-  async function writeRowColor(id, sourceType, color) {
+  async function writeRowColor(id, sourceType, color, sheetRow) {
     const res = await fetch("/api/row-color", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, dealType: sourceType, color }),
+      body: JSON.stringify({ id, dealType: sourceType, color, sheetRow }),
     });
     const result = await res.json();
     if (!res.ok || result.ok === false) throw new Error(result.error || "unknown error");
   }
 
   async function handleCancelProperty() {
-    const p = properties.find((x) => x.id === selectedId);
+    const p = properties.find((x) => uidOf(x) === selectedId);
     if (!p) return;
     if (!confirm(`Mark "${p.address || `Property ${p.id}`}" canceled? It turns red on the sheet and drops off the app.`)) {
       return;
     }
     try {
-      await writeRowColor(p.id, p.sourceType, "red");
+      await writeRowColor(p.id, p.sourceType, "red", p.sheetRow);
     } catch (err) {
       alert(`Couldn't cancel this property: ${err.message}`);
       return;
     }
     // Drop it from the list immediately and move to the next one.
-    const remaining = properties.filter((x) => x.id !== p.id);
+    const remaining = properties.filter((x) => uidOf(x) !== uidOf(p));
     setProperties(remaining);
     if (remaining.length) selectProperty(remaining[0]);
     else setSelectedId(null);
@@ -723,20 +728,20 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   // Contact (magenta) and Flyer (yellow) are toggles that tint the row without
   // removing it — press again to clear back to no color.
   async function handleToggleStatus(color) {
-    const p = properties.find((x) => x.id === selectedId);
+    const p = properties.find((x) => uidOf(x) === selectedId);
     if (!p) return;
     const target = p.rowColor === color ? "none" : color;
     try {
-      await writeRowColor(p.id, p.sourceType, target);
+      await writeRowColor(p.id, p.sourceType, target, p.sheetRow);
     } catch (err) {
       alert(`Couldn't update status: ${err.message}`);
       return;
     }
-    setProperties((prev) => prev.map((x) => (x.id === p.id ? { ...x, rowColor: target } : x)));
+    setProperties((prev) => prev.map((x) => (uidOf(x) === uidOf(p) ? { ...x, rowColor: target } : x)));
   }
 
   async function handleToggleResearched() {
-    const selectedNow = properties.find((p) => p.id === selectedId);
+    const selectedNow = properties.find((p) => uidOf(p) === selectedId);
     if (!selectedNow) return;
     const next = !researched;
     setSavingResearched(true);
@@ -744,7 +749,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       const res = await fetch("/api/researched", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedNow.id, dealType: selectedNow.sourceType, researched: next }),
+        body: JSON.stringify({ id: selectedNow.id, dealType: selectedNow.sourceType, researched: next, sheetRow: selectedNow.sheetRow }),
       });
       const result = await res.json();
       if (!res.ok || result.ok === false) {
@@ -760,17 +765,17 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     setResearched(next);
     setSavingResearched(false);
     // Update the list immediately so the 👍 badge appears without re-selecting.
-    setProperties((prev) => prev.map((p) => (p.id === selectedNow.id ? { ...p, fullyResearched: next } : p)));
+    setProperties((prev) => prev.map((p) => (uidOf(p) === uidOf(selectedNow) ? { ...p, fullyResearched: next } : p)));
   }
 
   async function handleToggleLock() {
-    const selectedNow = properties.find((p) => p.id === selectedId);
+    const selectedNow = properties.find((p) => uidOf(p) === selectedId);
     if (!selectedNow) return;
     setSavingLock(true);
     try {
       if (locked) {
         const res = await fetch(
-          `/api/locked-scenario?id=${encodeURIComponent(selectedNow.id)}&dealType=${encodeURIComponent(selectedNow.sourceType)}`,
+          `/api/locked-scenario?id=${encodeURIComponent(selectedNow.id)}&dealType=${encodeURIComponent(selectedNow.sourceType)}&sheetRow=${selectedNow.sheetRow || ""}`,
           { method: "DELETE" }
         );
         const result = await res.json();
@@ -792,7 +797,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
         const res = await fetch("/api/locked-scenario", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: selectedNow.id, dealType: selectedNow.sourceType, scenario }),
+          body: JSON.stringify({ id: selectedNow.id, dealType: selectedNow.sourceType, scenario, sheetRow: selectedNow.sheetRow }),
         });
         const result = await res.json();
         if (!res.ok || result.ok === false) {
@@ -811,7 +816,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
     refreshProperties(false);
   }
 
-  const selected = properties.find((p) => p.id === selectedId);
+  const selected = properties.find((p) => uidOf(p) === selectedId);
 
   // Sync Purchase/Bid Price edits into the sheet's AF column, debounced so a
   // burst of keystrokes lands as one write. Values that came FROM the sheet
@@ -819,18 +824,20 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
   // only fires on genuine user edits. AF-only write — never marks purchased.
   useEffect(() => {
     if (!selected || locked) return;
+    const uid = uidOf(selected);
     const last = syncedBidPrice.current;
-    if (last && last.id === selected.id && last.price === purchasePrice) return;
+    if (last && last.uid === uid && last.price === purchasePrice) return;
 
     const id = selected.id;
     const sourceType = selected.sourceType;
+    const sheetRow = selected.sheetRow;
     if (bidSyncTimer.current) clearTimeout(bidSyncTimer.current);
     bidSyncTimer.current = setTimeout(() => {
-      syncedBidPrice.current = { id, price: purchasePrice };
+      syncedBidPrice.current = { uid, price: purchasePrice };
       fetch("/api/bid-price", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, dealType: sourceType, price: purchasePrice }),
+        body: JSON.stringify({ id, dealType: sourceType, price: purchasePrice, sheetRow }),
       })
         .then((r) => r.json())
         .then((result) => {
@@ -842,7 +849,7 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
       if (bidSyncTimer.current) clearTimeout(bidSyncTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [purchasePrice, selected?.id, locked]);
+  }, [purchasePrice, selectedId, locked]);
   const activeConfig = configFor(selected);
 
   const result = useMemo(
@@ -909,8 +916,8 @@ export default function DealWorkspace({ dealType, title, goalDays, targetProfit,
             )}
             {filtered.map((p) => (
               <div
-                key={p.id}
-                className={`propItem ${p.id === selectedId ? "active" : ""} ${
+                key={uidOf(p)}
+                className={`propItem ${uidOf(p) === selectedId ? "active" : ""} ${
                   p.rowColor === "magenta" ? "contact" : p.rowColor === "yellow" ? "flyer" : ""
                 }`}
                 onClick={() => selectProperty(p)}
