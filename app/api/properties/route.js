@@ -185,8 +185,14 @@ function isWithinAuctionWindow(auctionDateStr) {
 // fallback, neither of which have real color/purchase data).
 function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
   return rows
-    .filter((r) => r.ID)
-    .map((r, i) => {
+    // Keep each row's ORIGINAL index so colors[i] / purchaseInfo[i] — which are
+    // aligned to the full sheet, including rows with a blank ID cell — stay in
+    // sync. Filtering by ID first and re-indexing shifted every row after a
+    // blank-ID row onto the wrong color, silently hiding active rows that
+    // inherited a red (eliminated) row's color.
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => r.ID)
+    .map(({ r, i }) => {
       const notes = resolveNotesFields(r);
       const { mortgageBalance, hudAmount, mortgageModified } = resolveMortgage(r, notes);
       const rowColor = colors?.[i] || "none";
