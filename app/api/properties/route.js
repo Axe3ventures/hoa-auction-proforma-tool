@@ -191,13 +191,20 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
     // blank-ID row onto the wrong color, silently hiding active rows that
     // inherited a red (eliminated) row's color.
     .map((r, i) => ({ r, i }))
-    .filter(({ r }) => r.ID)
+    // Column A (ID) is NOT required to show a deal. A freshly entered auction
+    // row that hasn't been assigned an ID yet still appears. We only skip rows
+    // that are effectively empty (no ID, no address, and no auction date), so
+    // genuinely blank spacer rows in the sheet don't render as empty cards.
+    .filter(({ r }) => r.ID || r.Address || field(r, "Auction_Date"))
     .map(({ r, i }) => {
+      // A blank ID cell must render as "" (not the string "undefined"); the
+      // client keys selection off sheetRow, so a missing ID is fine.
+      const idStr = r.ID ? String(r.ID) : "";
       const notes = resolveNotesFields(r);
       const { mortgageBalance, hudAmount, mortgageModified } = resolveMortgage(r, notes);
       const rowColor = colors?.[i] || "none";
       const sheetPurchase = purchaseInfo?.[i];
-      const localEntry = localEntries?.find((e) => e.id === String(r.ID) && e.dealType === sourceType);
+      const localEntry = idStr ? localEntries?.find((e) => e.id === idStr && e.dealType === sourceType) : undefined;
       const purchasePrice = toNum(sheetPurchase?.price) || toNum(localEntry?.price);
       const purchaser = sheetPurchase?.purchaser || localEntry?.purchaser || "";
       const purchasedDate = sheetPurchase?.purchasedDate || localEntry?.purchasedAt || "";
@@ -222,7 +229,7 @@ function normalize(rows, sourceType, colors, purchaseInfo, localEntries) {
       // has been recorded yet.
       const saleClass = classifySale(purchasePrice, purchaser, rowColor);
       return {
-        id: String(r.ID),
+        id: idStr,
         // 1-indexed sheet row this property came from (header is row 1). The
         // sheet contains duplicate IDs, so writes pass this back as the exact
         // target — matching by ID alone can hit the wrong (older) occurrence.
